@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "rootDir": "./electron",
+    "types": ["node", "electron"]
+  },
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/crypto" },
+    { "path": "../../packages/database" },
+    { "path": "../../packages/generator" },
+    { "path": "../../packages/validation" }
+  ],
+  "include": ["electron/main/**/*.ts", "electron/preload/**/*.ts"],
+  "exclude": ["**/dist/**", "renderer/**"]
+}

@@ -1,0 +1,657 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Scaffold monorepo and Electron + Next.js shell": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222005788
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222018302
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222593973
+      }
+    ],
+    "2.1 Add item and IPC type definitions in `packages/contracts`": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222005898
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222599911
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222845443
+      }
+    ],
+    "2.2 Add input validation schemas in `packages/validation`": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222005954
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222853748
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223162948
+      }
+    ],
+    "3.1 Implement KDF-based key derivation and verifier create/verify wrappers": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006003
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222600879
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222846391
+      }
+    ],
+    "3.3 Implement AEAD encrypt/decrypt wrappers for item payloads": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006069
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222602016
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222847444
+      }
+    ],
+    "4.1 Create SQLite schema and a version-keyed migration runner": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006137
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222854743
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223164100
+      }
+    ],
+    "4.2 Implement CRUD queries over encrypted payloads with plaintext metadata columns": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006201
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223185026
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223486071
+      }
+    ],
+    "5.1 Implement create/unlock/lock/status with in-memory key state": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006268
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223493593
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223718164
+      }
+    ],
+    "6.1 Implement the typed IPC router in main": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006330
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223724067
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788224275316
+      }
+    ],
+    "6.2 Expose the narrow API via `contextBridge.exposeInMainWorld` in preload": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006387
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788224281165
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788224406706
+      }
+    ],
+    "7. Checkpoint - secure core operational": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006465
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788224412606
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788225483495
+      }
+    ],
+    "8.1 First-run onboarding flow": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006519
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788225496473
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226025268
+      }
+    ],
+    "8.2 Unlock screen": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006581
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788225497198
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226025976
+      }
+    ],
+    "9.1 Top bar and sidebar": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006637
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226032931
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226441973
+      }
+    ],
+    "9.2 Item list pane": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006700
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226033873
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226440154
+      }
+    ],
+    "9.3 Item detail pane": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006761
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226034605
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226441111
+      }
+    ],
+    "10.1 ItemEditor for logins and secure notes": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006815
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226457394
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226967774
+      }
+    ],
+    "10.2 Save, edit, and trash paths": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006871
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226458361
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226968699
+      }
+    ],
+    "11.1 Search results view": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006930
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226459740
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226964971
+      }
+    ],
+    "11.2 Category management and favorites views": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222006990
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226460598
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226965925
+      }
+    ],
+    "12.1 Pure generator in a shared package": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007054
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223186110
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223486563
+      }
+    ],
+    "12.3 Generator UI": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007116
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226461261
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226966780
+      }
+    ],
+    "13. Implement clipboard safety and reveal-on-lock behavior": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007202
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226977028
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788244375971
+      }
+    ],
+    "14. Implement auto-lock": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007268
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226977732
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788244376737
+      }
+    ],
+    "15. Checkpoint - full local vault usable": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007321
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788244755323
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788245126272
+      }
+    ],
+    "16.1 General settings": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007387
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226978629
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788244739011
+      }
+    ],
+    "16.2 Security settings": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007455
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226980070
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788244739959
+      }
+    ],
+    "16.3 Backup and About panes": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007515
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226980788
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788244740909
+      }
+    ],
+    "16.4 Persist settings via the settings table": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007563
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788245133779
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788246538033
+      }
+    ],
+    "17.1 Export and restore in the Backup Service": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007624
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788245134740
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788246538969
+      }
+    ],
+    "18.1 Structured logger for operational events": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007688
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788245135691
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788246537102
+      }
+    ],
+    "19. Checkpoint - feature-complete V1": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007750
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788246554848
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788248023291
+      }
+    ],
+    "21. Windows packaging": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222007835
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788248030387
+      },
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788253115763
+      }
+    ],
+    "3. Implement the crypto package (behind the deferred security spec)": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788222847598
+      }
+    ],
+    "2. Define shared contracts and validation schemas": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223163140
+      }
+    ],
+    "4. Implement the database package": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223486184
+      }
+    ],
+    "5. Implement the Vault Service and unlock lifecycle (main process)": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788223718260
+      }
+    ],
+    "6. Wire the IPC router and preload context bridge": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788224406774
+      }
+    ],
+    "8. Build onboarding and unlock UI": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226026048
+      }
+    ],
+    "9. Build shared chrome and the three-pane vault UI (per mockups)": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226442034
+      }
+    ],
+    "11. Implement search, categories, and favorites": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226965984
+      }
+    ],
+    "12. Implement the password generator (per mockup)": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226966844
+      }
+    ],
+    "10. Implement item create/edit/delete (Add Login / Edit Vault Item screens)": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788226968771
+      }
+    ],
+    "18. Add non-secret logging with a secret denylist": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788246537219
+      }
+    ],
+    "16. Implement settings (two-column Settings layout per mockups)": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788246538150
+      }
+    ],
+    "17. Implement encrypted backup and restore": [
+      {
+        "executionId": "d3d9af7d-841c-4d10-a767-9d155f8223bd",
+        "chatSessionId": "sess_807fcb11-e49f-43a0-bf90-cc4f26e08adf",
+        "timestamp": 1788246539074
+      }
+    ]
+  }
+}

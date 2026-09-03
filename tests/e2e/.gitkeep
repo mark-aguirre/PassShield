@@ -1,0 +1,2 @@
+# End-to-end tests live here (create -> unlock -> item CRUD -> search -> lock -> restart -> backup/restore).
+# Run under a separate harness; excluded from the default vitest run.

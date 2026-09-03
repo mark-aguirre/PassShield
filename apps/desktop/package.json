@@ -1,0 +1,29 @@
+{
+  "name": "@passshield/desktop",
+  "version": "1.0.3",
+  "private": true,
+  "description": "PassShield — a local-first desktop password manager.",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build:main": "tsc --build",
+    "build:renderer": "npm run build --workspace @passshield/renderer",
+    "build": "npm run build:renderer && npm run build:main",
+    "clean": "tsc --build --clean",
+    "dev": "npm run build && electron .",
+    "start": "electron .",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:win:dir": "npm run build && electron-builder --win --dir",
+    "dist:appx": "npm run build && electron-builder --win appx"
+  },
+  "dependencies": {
+    "@passshield/contracts": "*",
+    "@passshield/crypto": "*",
+    "@passshield/database": "*",
+    "@passshield/generator": "*",
+    "@passshield/validation": "*"
+  },
+  "devDependencies": {
+    "electron": "44.1.0",
+    "electron-builder": "^26.15.3"
+  }
+}

@@ -1,0 +1,112 @@
+# electron-builder configuration for PassShield (Windows packaging — Task 21).
+#
+# This file produces a Windows-compatible package from the production build
+# (Req 15.1) and prepares MSIX/Microsoft Store-compatible packaging that is
+# validated during release engineering (Req 15.2). The vault database itself is
+# stored per-user by the app at runtime under app.getPath('userData')
+# (%APPDATA%/passShield), so no packaging config is needed for Req 15.3 — see
+# apps/desktop/electron/main/main.ts and docs/release/windows-packaging.md.
+#
+# Store packaging: on electron-builder 26.x the `appx` target below produces the
+# Microsoft Store-compatible package (.appx), which the Store accepts. APPX
+# packaging runs on Windows. For Store submission, upload the .appx via Partner
+# Center — the Store re-signs the package on submission, so no local signing
+# certificate is required. (True MSIX output requires electron-builder v27+,
+# which is a major upgrade: native ESM + Node.js >= 22.12.0 + config key
+# renames. Upgrade separately if MSIX-only features are needed.)
+#
+# NOTE ON BUILDING: better-sqlite3 is a native module and is rebuilt against
+# Electron's ABI during packaging (npmRebuild below). That rebuild requires the
+# platform C++ build tools on the build machine (Visual Studio C++ Build Tools
+# on Windows). Microsoft Store submission identity, publisher, and signing are
+# finalized during release engineering; the msix block below uses placeholders.
+appId: com.passshield.app
+# Single canonical product/display name used across every installed component
+# (NSIS install, Start Menu shortcut, and APPX tile). This MUST match casing
+# everywhere to satisfy Microsoft Store policy 10.1.1.11 (On Device Tiles):
+# a mismatch (e.g. "PassShield" vs "passShield") surfaces as TWO differently
+# named Start Menu tiles and gets the submission rejected.
+productName: PassShield
+
+directories:
+  output: release
+  buildResources: build
+
+# Ship the compiled main/preload (dist), the statically exported renderer
+# (renderer/out), and the manifest. electron-builder resolves and bundles
+# production node_modules (including better-sqlite3) automatically.
+files:
+  - dist/**/*
+  - renderer/out/**/*
+  - build/icon.png
+  - package.json
+
+# The renderer/main are packed into an asar archive, but better-sqlite3 ships a
+# native .node binary that must remain a real file on disk to be loadable, so it
+# is unpacked from the asar. (Req 15.1)
+asarUnpack:
+  - "**/node_modules/better-sqlite3/**"
+
+# Do NOT rebuild native modules from source at package time. better-sqlite3
+# (13.x) ships a prebuilt binary for each platform under its `prebuilds/`
+# directory (e.g. prebuilds/win32-x64.node), verified to load under this
+# project's Electron ABI. Bundling that prebuilt avoids requiring the platform
+# C++ build tools on the packaging machine and removes a from-source compile
+# step that previously failed. If you ever pin a better-sqlite3 version that
+# lacks a matching prebuilt for the target Electron ABI, flip this back to true
+# and ensure the C++ build tools are installed on the build machine.
+npmRebuild: false
+
+win:
+  # Produce a per-user NSIS installer (Req 15.1) and an APPX package that is
+  # Microsoft Store compatible (Req 15.2). electron-builder 26.x builds the
+  # Store-compatible package as APPX; the .appx artifact is accepted by the
+  # Microsoft Store. (True MSIX packaging requires electron-builder v27+.)
+  target:
+    - nsis
+    - appx
+  # Windows app/installer icon. The multi-resolution .ico lives in
+  # buildResources (build/) and is generated from build/icon.png.
+  icon: build/icon.ico
+  artifactName: "${productName}-${version}-${arch}.${ext}"
+
+# NSIS installer: per-user (not per-machine) install so it aligns with the
+# per-user vault data location and avoids requiring elevation. (Req 15.1, 15.3)
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+# APPX (Microsoft Store-compatible) packaging. (Req 15.2)
+#
+# The identity values below are PLACEHOLDERS. The real identityName, publisher,
+# and publisherDisplayName come from the Microsoft Partner Center once the app
+# name is reserved. For Store submission you do NOT sign locally — upload the
+# .appx via Partner Center and the Store re-signs the package on submission,
+# replacing the publisher with a Store-managed identity. Building without a
+# certificate produces an unsigned package suitable for the Store upload flow
+# (or local validation with Developer Mode enabled).
+#
+# APPX tile/logo assets are read from build/appx/. These are BRANDED assets
+# generated from build/icon.png by build/generate-appx-assets.ps1 — do not ship
+# the electron-builder default/placeholder tiles, which fail Microsoft Store
+# certification policy 10.1.1.11 (On Device Tiles). Provided logos:
+#   StoreLogo.png (50x50), Square44x44Logo.png, Square71x71Logo.png,
+#   Square150x150Logo.png, Square310x310Logo.png, Wide310x150Logo.png.
+# Regenerate after changing the icon:
+#   powershell -ExecutionPolicy Bypass -File build/generate-appx-assets.ps1
+appx:
+  identityName: "markaguirre.PassShield" # Package/Identity/Name from Partner Center
+  publisher: "CN=343BE4E7-8E4D-410E-AE9F-8C5BABD03DC1" # Package/Identity/Publisher from Partner Center
+  publisherDisplayName: "markaguirre" # Package/Properties/PublisherDisplayName from Partner Center
+  # applicationId is the Applications/Application Id (an internal identifier, not
+  # shown to users). It must be a valid identifier and stay stable across
+  # updates. Casing here is normalized to the brand for consistency.
+  applicationId: "PassShield"
+  # displayName drives BOTH Properties/DisplayName (package name) and the
+  # Application VisualElements/DisplayName (the Start Menu tile label). Setting
+  # it explicitly (instead of letting it fall back to productName) guarantees a
+  # single, unambiguous tile name and prevents the duplicate-tile rejection
+  # under Microsoft Store policy 10.1.1.11 (On Device Tiles).
+  displayName: "PassShield"
+  backgroundColor: "#1a1a1a"

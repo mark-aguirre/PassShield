@@ -1,0 +1,177 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+ * passShield design system (Tailwind CSS v4, CSS-first config).
+ *
+ * The mockups (.kiro/specs/screens) use a two-tone shell: a deep-navy sidebar
+ * on the left and a light, near-white content area on the right, tied together
+ * by a bright blue accent. shadcn/ui reads its tokens from the CSS variables
+ * defined below; the @theme inline block maps them to Tailwind color
+ * utilities so both shadcn components and ad-hoc color classes stay in sync.
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.75rem;
+
+  /* Light content surface (right pane of every screen). */
+  --background: oklch(0.98 0.004 247);
+  --foreground: oklch(0.21 0.03 258);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.03 258);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.03 258);
+
+  /* Bright blue accent used for primary buttons, links, active states. */
+  --primary: oklch(0.55 0.22 264);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.96 0.006 247);
+  --secondary-foreground: oklch(0.28 0.03 258);
+
+  --muted: oklch(0.96 0.006 247);
+  --muted-foreground: oklch(0.55 0.02 257);
+
+  --accent: oklch(0.95 0.02 255);
+  --accent-foreground: oklch(0.3 0.08 264);
+
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.92 0.006 250);
+  --input: oklch(0.92 0.006 250);
+  --ring: oklch(0.55 0.22 264);
+
+  --success: oklch(0.62 0.17 150);
+  --warning: oklch(0.75 0.16 70);
+
+  /* Deep-navy sidebar shell. */
+  --sidebar: oklch(0.19 0.04 264);
+  --sidebar-foreground: oklch(0.93 0.01 255);
+  --sidebar-primary: oklch(0.55 0.22 264);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.28 0.05 264);
+  --sidebar-accent-foreground: oklch(0.97 0.01 255);
+  --sidebar-border: oklch(0.28 0.04 264);
+  --sidebar-ring: oklch(0.55 0.22 264);
+  --sidebar-muted: oklch(0.65 0.03 258);
+}
+
+/*
+ * Dark theme. Applied when the <html> element carries the `.dark` class
+ * (toggled by src/lib/appearance.ts from the persisted `theme` setting). The
+ * content surface flips to a deep slate while the accent tokens stay in sync
+ * with the user's chosen accent color (overridden at runtime on :root).
+ */
+.dark {
+  --background: oklch(0.17 0.02 264);
+  --foreground: oklch(0.95 0.01 255);
+
+  --card: oklch(0.21 0.03 264);
+  --card-foreground: oklch(0.95 0.01 255);
+
+  --popover: oklch(0.21 0.03 264);
+  --popover-foreground: oklch(0.95 0.01 255);
+
+  --primary: oklch(0.62 0.22 264);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.27 0.03 264);
+  --secondary-foreground: oklch(0.95 0.01 255);
+
+  --muted: oklch(0.27 0.03 264);
+  --muted-foreground: oklch(0.7 0.02 257);
+
+  --accent: oklch(0.3 0.05 264);
+  --accent-foreground: oklch(0.96 0.01 255);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.3 0.03 264);
+  --input: oklch(0.3 0.03 264);
+  --ring: oklch(0.62 0.22 264);
+
+  --success: oklch(0.65 0.17 150);
+  --warning: oklch(0.78 0.16 70);
+
+  /* The sidebar is already dark; deepen it slightly so it reads as a distinct
+     shell against the dark content area. */
+  --sidebar: oklch(0.15 0.03 264);
+  --sidebar-foreground: oklch(0.93 0.01 255);
+  --sidebar-primary: oklch(0.62 0.22 264);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.26 0.05 264);
+  --sidebar-accent-foreground: oklch(0.97 0.01 255);
+  --sidebar-border: oklch(0.26 0.04 264);
+  --sidebar-ring: oklch(0.62 0.22 264);
+  --sidebar-muted: oklch(0.66 0.03 258);
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted: var(--sidebar-muted);
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', Consolas, monospace;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body {
+    @apply m-0 p-0;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /* The vault shell fills the Electron window. */
+  #__next,
+  main,
+  .app-root {
+    min-height: 100vh;
+  }
+}
