@@ -33,7 +33,6 @@ import {
   Copy,
   Eye,
   EyeOff,
-  FileText,
   KeyRound,
   MoreHorizontal,
   Pencil,
@@ -42,6 +41,7 @@ import {
   X,
 } from 'lucide-react';
 
+import { ItemIcon } from '@/app/components/vault/ItemIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -178,7 +178,6 @@ export function ItemDetail({ itemId, onEdit, onClose }: ItemDetailProps) {
   }
 
   const { item } = load;
-  const TypeIcon = item.itemType === 'login' ? KeyRound : FileText;
   // Resolve the stored category id to its display name + color.
   const resolvedCategory: ResolvedCategory = item.categoryId
     ? (() => {
@@ -191,9 +190,12 @@ export function ItemDetail({ itemId, onEdit, onClose }: ItemDetailProps) {
     <section className="flex h-full flex-col overflow-y-auto" aria-label="Item detail">
       <div className="flex items-start justify-between gap-4 p-6 pb-4">
         <div className="flex min-w-0 items-center gap-4">
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-            <TypeIcon className="size-6" />
-          </span>
+          <ItemIcon
+            title={item.title}
+            itemType={item.itemType}
+            className="size-14 rounded-2xl"
+            glyphSize={24}
+          />
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex items-center gap-2">
               <h2 className="truncate text-2xl font-bold text-foreground">{item.title}</h2>

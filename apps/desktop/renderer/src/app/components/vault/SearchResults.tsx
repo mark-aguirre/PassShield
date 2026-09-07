@@ -10,13 +10,12 @@ import type {
 import {
   ChevronLeft,
   ChevronRight,
-  FileText,
-  KeyRound,
   LayoutGrid,
   List,
   ListFilter,
 } from 'lucide-react';
 
+import { ItemIcon } from '@/app/components/vault/ItemIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,11 +48,6 @@ const PAGE_SIZE = 20;
 const ITEM_TYPE_LABEL: Record<ItemType, string> = {
   login: 'Login',
   note: 'Secure Note',
-};
-
-const ITEM_TYPE_ICON: Record<ItemType, typeof KeyRound> = {
-  login: KeyRound,
-  note: FileText,
 };
 
 /** Format an ISO 8601 timestamp as a short, locale-aware date. */
@@ -172,12 +166,9 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
   }
 
   function renderResultRow(item: ItemSummary) {
-    const Icon = ITEM_TYPE_ICON[item.itemType];
     return (
       <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
-        <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-          <Icon className="size-5" />
-        </span>
+        <ItemIcon title={item.title} itemType={item.itemType} className="size-11" glyphSize={20} />
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="truncate text-sm font-semibold text-foreground">{item.title}</span>
           <span className="truncate text-xs text-muted-foreground">
@@ -197,13 +188,10 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
   }
 
   function renderResultCard(item: ItemSummary) {
-    const Icon = ITEM_TYPE_ICON[item.itemType];
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
         <div className="flex items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-            <Icon className="size-5" />
-          </span>
+          <ItemIcon title={item.title} itemType={item.itemType} className="size-10" glyphSize={20} />
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-sm font-semibold text-foreground">{item.title}</span>
             <span className="truncate text-xs text-muted-foreground">

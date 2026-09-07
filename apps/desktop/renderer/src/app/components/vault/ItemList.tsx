@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ItemListFilter, ItemSort, ItemSummary, ItemType } from '@passshield/contracts';
-import { FileText, KeyRound, ListFilter, Star } from 'lucide-react';
+import { ListFilter, Star } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { ItemIcon } from '@/app/components/vault/ItemIcon';
 import {
   Select,
   SelectContent,
@@ -56,12 +57,6 @@ const SORT_OPTIONS: ReadonlyArray<{ value: ItemSort; label: string }> = [
 const ITEM_TYPE_LABEL: Record<ItemType, string> = {
   login: 'Login',
   note: 'Secure Note',
-};
-
-/** Per-type icon for the row leading tile. */
-const ITEM_TYPE_ICON: Record<ItemType, typeof KeyRound> = {
-  login: KeyRound,
-  note: FileText,
 };
 
 /**
@@ -167,7 +162,6 @@ export function ItemList({
         <ul className="flex-1 space-y-1 overflow-y-auto px-2 pb-2" role="list">
           {items.map((item) => {
             const isSelected = item.id === selectedItemId;
-            const Icon = ITEM_TYPE_ICON[item.itemType];
             return (
               <li key={item.id}>
                 <div
@@ -186,9 +180,7 @@ export function ItemList({
                     isSelected ? 'bg-accent ring-1 ring-primary/30' : 'hover:bg-muted',
                   )}
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                    <Icon className="size-[18px]" />
-                  </span>
+                  <ItemIcon title={item.title} itemType={item.itemType} glyphSize={18} />
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-sm font-medium text-foreground">
                       {item.title}
