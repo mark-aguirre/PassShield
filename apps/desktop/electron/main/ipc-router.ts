@@ -66,6 +66,7 @@ export const IpcChannels = {
     unlock: 'vault:unlock',
     lock: 'vault:lock',
     status: 'vault:status',
+    changeMasterPassword: 'vault:changeMasterPassword',
   },
   items: {
     list: 'items:list',
@@ -229,6 +230,14 @@ export function registerIpcRouter(
 
   // No input; returns the current lock/status projection (non-secret).
   handle(IpcChannels.vault.status, (): VaultStatus => vault.status());
+
+  handle(IpcChannels.vault.changeMasterPassword, async (rawInput: unknown): Promise<Result> => {
+    const parsed = ipcInputSchemas.vault.changeMasterPassword.safeParse(rawInput);
+    if (!parsed.success) {
+      return validationError(parsed.error);
+    }
+    return vault.changeMasterPassword(parsed.data);
+  });
 
   // -------------------------------------------------------------------------
   // items.*  (secret gating is enforced by the VaultService)

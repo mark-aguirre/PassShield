@@ -156,6 +156,49 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
     setEditor({ mode: 'edit', itemId: id });
   }, []);
 
+  // Toggle an item's favorite flag. The list pane carries only non-secret
+  // metadata, so we fetch the full (decrypted) item, flip `isFavorite`, and
+  // persist through the existing `items.save` surface (the only mutating item
+  // API). On success we bump the refresh token so the list, sidebar counts,
+  // and Favorites scope re-fetch. _(Req 7.4)_
+  const handleToggleFavorite = useCallback(
+    async (id: string, next: boolean) => {
+      try {
+        const detail = await window.passShield.items.get(id);
+        if (!detail.ok) {
+          return;
+        }
+        const item = detail.value;
+        const saveInput =
+          item.itemType === 'login'
+            ? {
+                id: item.id,
+                itemType: 'login' as const,
+                title: item.title,
+                categoryId: item.categoryId,
+                isFavorite: next,
+                payload: item.payload,
+              }
+            : {
+                id: item.id,
+                itemType: 'note' as const,
+                title: item.title,
+                categoryId: item.categoryId,
+                isFavorite: next,
+                payload: item.payload,
+              };
+        const result = await window.passShield.items.save(saveInput);
+        if (result.ok) {
+          bumpRefreshToken();
+        }
+      } catch {
+        // Swallow: a failed toggle leaves the star in its prior state; the
+        // refresh token is not bumped so no stale UI is shown.
+      }
+    },
+    [bumpRefreshToken],
+  );
+
   const handleEditorSaved = useCallback(
     (savedId: string) => {
       setEditor(null);
@@ -274,6 +317,8 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
                       }}
                       selectedItemId={selectedItemId}
                       onSelectItem={(id) => selectItem(id)}
+                      onToggleFavorite={handleToggleFavorite}
+                      refreshToken={refreshToken}
                     />
                   )}
                 </section>

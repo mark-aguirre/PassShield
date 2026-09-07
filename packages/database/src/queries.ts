@@ -376,6 +376,54 @@ export function deleteItem(db: VaultDatabase, id: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Re-encryption support (master-password change)
+// ---------------------------------------------------------------------------
+
+/** A single item's id and its opaque encrypted payload text. */
+export interface ItemPayloadRow {
+  id: string;
+  encrypted_payload: string;
+}
+
+/**
+ * Read the id + encrypted payload of EVERY item, including trashed ones.
+ *
+ * Used only by the master-password change flow, which must decrypt and
+ * re-encrypt every payload with the new key. Trashed items are deliberately
+ * included: skipping them would leave those rows encrypted under the old key
+ * and permanently unreadable after the key changes. Returns ciphertext only;
+ * no decryption happens here. (Req 12)
+ */
+export function listAllItemRowsForReencryption(db: VaultDatabase): ItemPayloadRow[] {
+  return db
+    .prepare(/* sql */ `SELECT id, encrypted_payload FROM vault_item`)
+    .all() as ItemPayloadRow[];
+}
+
+/**
+ * Replace ONLY an item's encrypted payload, leaving `version`, `updated_at`,
+ * and all metadata untouched.
+ *
+ * This is distinct from {@link updateItem} (which bumps `version` and restamps
+ * `updated_at`) because re-encrypting under a new master key is not a user
+ * edit: the plaintext is unchanged, so the edit/sync bookkeeping must not move.
+ * Returns `false` when no item with that id exists. (Req 12)
+ */
+export function setItemEncryptedPayload(
+  db: VaultDatabase,
+  id: string,
+  encryptedPayload: string,
+): boolean {
+  const result = db
+    .prepare(
+      /* sql */ `UPDATE vault_item SET encrypted_payload = @encrypted_payload WHERE id = @id`,
+    )
+    .run({ id, encrypted_payload: encryptedPayload });
+
+  return result.changes > 0;
+}
+
+// ---------------------------------------------------------------------------
 // Category CRUD
 // ---------------------------------------------------------------------------
 

@@ -459,8 +459,6 @@ function GeneralPane({ settings, onChange }: PaneProps) {
 // ---------------------------------------------------------------------------
 
 function SecurityPane({ settings, onChange }: PaneProps) {
-  const [changePasswordNote, setChangePasswordNote] = useState<string | null>(null);
-
   return (
     <div>
       <PaneHeader title="Security" subtitle="Configure security and privacy behavior for your vault." />
@@ -576,26 +574,11 @@ function SecurityPane({ settings, onChange }: PaneProps) {
             <Row
               icon={<ShieldCheck className="size-4" />}
               label="Change master password"
-              description="Update your master password."
+              description="Update your master password. Your vault is re-encrypted with the new password."
             >
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setChangePasswordNote(
-                    'Changing the master password is not available yet in this build.',
-                  )
-                }
-              >
-                Change Password
-              </Button>
+              <span className="text-xs text-muted-foreground">Enter your details below</span>
             </Row>
-            {changePasswordNote && (
-              <p role="status" className="px-3 pb-2 text-xs text-muted-foreground">
-                {changePasswordNote}
-              </p>
-            )}
+            <ChangeMasterPasswordForm />
           </Group>
         </div>
 
@@ -632,6 +615,126 @@ function Explainer({ title, text }: { title: string; text: string }) {
       <span className="text-sm font-semibold text-foreground">{title}</span>
       <span className="text-xs leading-relaxed text-muted-foreground">{text}</span>
     </div>
+  );
+}
+
+/**
+ * Inline form for changing the master password. Collects the current password,
+ * the new password, and its confirmation, does light client-side validation,
+ * and calls `window.passShield.vault.changeMasterPassword`. The main process
+ * re-verifies the current password and re-encrypts the vault under the new one;
+ * the plaintext passwords never leave this boundary beyond the IPC call and are
+ * cleared from state on success. _(Req 12)_
+ */
+function ChangeMasterPasswordForm() {
+  const currentId = useId();
+  const newId = useId();
+  const confirmId = useId();
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const resetFields = useCallback(() => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+  }, []);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setSuccess(false);
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError('Please fill in all fields.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('The new passwords do not match.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setError('The new password must be different from the current one.');
+      return;
+    }
+
+    setIsBusy(true);
+    try {
+      const result = await window.passShield.vault.changeMasterPassword({
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+      if (result.ok) {
+        setSuccess(true);
+        resetFields();
+      } else {
+        setError(result.error.message);
+      }
+    } catch {
+      setError('Could not change the master password. Please try again.');
+    } finally {
+      setIsBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3 px-3 pt-1 pb-3">
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={currentId}>Current password</Label>
+        <Input
+          id={currentId}
+          type="password"
+          autoComplete="current-password"
+          value={currentPassword}
+          onChange={(event) => setCurrentPassword(event.target.value)}
+          disabled={isBusy}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={newId}>New password</Label>
+        <Input
+          id={newId}
+          type="password"
+          autoComplete="new-password"
+          value={newPassword}
+          onChange={(event) => setNewPassword(event.target.value)}
+          disabled={isBusy}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={confirmId}>Confirm new password</Label>
+        <Input
+          id={confirmId}
+          type="password"
+          autoComplete="new-password"
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          disabled={isBusy}
+        />
+      </div>
+
+      {error && (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p role="status" className="text-xs text-success">
+          Master password changed. Your vault has been re-encrypted.
+        </p>
+      )}
+
+      <div className="flex justify-end">
+        <Button type="submit" size="sm" disabled={isBusy}>
+          {isBusy ? 'Changing...' : 'Change Password'}
+        </Button>
+      </div>
+    </form>
   );
 }
 

@@ -1,5 +1,7 @@
-import { app, BrowserWindow, clipboard, shell } from 'electron';
+import { app, BrowserWindow, clipboard, Menu, nativeImage, shell, Tray } from 'electron';
 import * as path from 'node:path';
+
+import type { CloseBehavior } from '@passshield/contracts';
 
 import { AutoLockManager } from './auto-lock-manager.js';
 import { BackupService } from './backup-service.js';
@@ -66,6 +68,33 @@ const DEFAULT_AUTO_LOCK_MINUTES = 15;
 let mainWindow: BrowserWindow | null = null;
 
 /**
+ * The system tray icon. Created lazily the first time the window is hidden to
+ * the tray (or at startup when `startMinimized` is set) so we do not add a tray
+ * entry for users who chose "Quit on close" and never minimize. Clicking it, or
+ * its "Open passShield" menu item, restores the window. (Req 14 — close/minimize
+ * behavior)
+ */
+let tray: Tray | null = null;
+
+/**
+ * True once the app is genuinely exiting (via the tray "Quit" item, the app
+ * `before-quit`, or `Cmd+Q`). The window `close` handler consults this to
+ * decide whether an X-button close should hide to the tray (normal case) or be
+ * allowed to proceed (a real quit). Without this flag, "minimize to tray" would
+ * make the app impossible to actually quit.
+ */
+let isQuitting = false;
+
+/**
+ * The user's current close-behavior preference, cached in the main process so
+ * the synchronous window `close` handler can consult it without a DB read. It
+ * is seeded from persisted settings at startup and kept in sync by the settings
+ * change listener, so toggling it in Settings takes effect immediately. (Req
+ * 14, 3.4)
+ */
+let closeBehavior: CloseBehavior = 'minimizeToTray';
+
+/**
  * The single shared, non-secret logger for the main process. It writes
  * structured JSON lines for operational events (vault locked/unlocked,
  * migration applied, clipboard cleared) and redacts any secret `meta` fields
@@ -122,6 +151,83 @@ let settingsStore: SettingsStore | null = null;
 let backupService: BackupService | null = null;
 
 /**
+ * Bring the main window back from the tray: restore it if minimized, show it if
+ * hidden, and focus it. Safe to call when the window is already visible.
+ */
+function showMainWindow(): void {
+  if (mainWindow === null) {
+    createMainWindow();
+    return;
+  }
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+/**
+ * Create the system tray icon and its context menu, once. The tray provides the
+ * only affordance to restore the window while it is hidden to the tray, plus an
+ * explicit Quit that bypasses the hide-to-tray behavior. Reuses the packaged
+ * app icon (`build/icon.png`); on a missing/oversized image Electron scales it,
+ * and a resize keeps the tray glyph crisp on Windows. (Req 14)
+ */
+function ensureTray(): void {
+  if (tray !== null) {
+    return;
+  }
+
+  let image = nativeImage.createFromPath(WINDOW_ICON_PATH);
+  if (!image.isEmpty()) {
+    // Windows/Linux tray icons look best around 16px; scale down the app icon.
+    image = image.resize({ width: 16, height: 16 });
+  }
+
+  tray = image.isEmpty() ? new Tray(WINDOW_ICON_PATH) : new Tray(image);
+  tray.setToolTip('passShield');
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Open passShield',
+      click: () => showMainWindow(),
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit passShield',
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      },
+    },
+  ]);
+  tray.setContextMenu(contextMenu);
+
+  // A left click (or double click on some platforms) restores the window, the
+  // conventional tray affordance on Windows.
+  tray.on('click', () => showMainWindow());
+  tray.on('double-click', () => showMainWindow());
+}
+
+/** Remove the tray icon, e.g. on real quit. Idempotent. */
+function destroyTray(): void {
+  if (tray !== null) {
+    tray.destroy();
+    tray = null;
+  }
+}
+
+/**
+ * Hide the window to the system tray instead of closing it: create the tray if
+ * needed, then hide the window so it disappears from the taskbar but the app
+ * keeps running in the background. (Req 14)
+ */
+function hideToTray(): void {
+  ensureTray();
+  mainWindow?.hide();
+}
+
+/**
  * Create the main application window with the required security flags and
  * load the renderer (dev server in development, static export in
  * production).
@@ -145,7 +251,28 @@ function createMainWindow(): void {
   });
 
   mainWindow.once('ready-to-show', () => {
+    // Honor "Start minimized to system tray": when enabled, do not show the
+    // window on launch — create the tray and leave the app running in the
+    // background so the user opens it from the tray. Any other launch shows the
+    // window normally. (Req 14)
+    const startMinimized = settingsStore?.get().startMinimized ?? false;
+    if (startMinimized) {
+      ensureTray();
+      return;
+    }
     mainWindow?.show();
+  });
+
+  // Intercept the window close (X button). When the user chose "Minimize to
+  // system tray" we prevent the default close and hide the window to the tray
+  // instead of quitting; the app keeps running in the background. When they
+  // chose "Quit", or when the app is genuinely exiting (tray Quit / before-quit
+  // / Cmd+Q set `isQuitting`), we let the close proceed. (Req 14)
+  mainWindow.on('close', (event) => {
+    if (!isQuitting && closeBehavior === 'minimizeToTray') {
+      event.preventDefault();
+      hideToTray();
+    }
   });
 
   mainWindow.on('closed', () => {
@@ -173,12 +300,9 @@ if (!gotSingleInstanceLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) {
-        mainWindow.restore();
-      }
-      mainWindow.focus();
-    }
+    // A second launch attempt surfaces the existing instance, restoring it from
+    // the tray if it was hidden there. (Req 14)
+    showMainWindow();
   });
 
   void app.whenReady().then(() => {
@@ -198,6 +322,10 @@ if (!gotSingleInstanceLock) {
     // now to seed the services below. (Req 3.4, 9.4, 14.3)
     settingsStore = new SettingsStore({ databasePath, logger });
     const persistedSettings = settingsStore.get();
+
+    // Seed the cached close-behavior so the window `close` handler honours the
+    // user's saved preference from the first launch. (Req 14)
+    closeBehavior = persistedSettings.closeBehavior;
 
     // Apply the persisted clipboard-clear interval so copies made this session
     // honour the user's saved preference. (Req 9.4)
@@ -244,6 +372,9 @@ if (!gotSingleInstanceLock) {
     settingsStore.setOnChange((next) => {
       autoLockManager?.setTimeoutMinutes(next.autoLockMinutes);
       clipboardService?.setClearSeconds(next.clipboardClearSeconds);
+      // Keep the cached close-behavior in sync so toggling it in Settings takes
+      // effect on the very next window close, without a restart. (Req 14, 3.4)
+      closeBehavior = next.closeBehavior;
     });
 
     // Construct the Backup Service against the same per-user vault database.
@@ -278,8 +409,12 @@ if (!gotSingleInstanceLock) {
     createMainWindow();
 
     app.on('activate', () => {
+      // Re-show the existing window (restoring from the tray if hidden) or
+      // recreate it when none exists. (Req 14)
       if (BrowserWindow.getAllWindows().length === 0) {
         createMainWindow();
+      } else {
+        showMainWindow();
       }
     });
   });
@@ -287,13 +422,21 @@ if (!gotSingleInstanceLock) {
   // Lock the vault on exit so the derived key and cached secrets are dropped
   // where practical. (Req 2.4, 3.3)
   app.on('before-quit', () => {
+    // Mark a genuine quit so the window `close` handler stops hiding to the
+    // tray and allows the window to actually close. (Req 14)
+    isQuitting = true;
     // Stop the inactivity timer before locking so it cannot fire during exit.
     autoLockManager?.stop();
     vaultService?.lock();
+    destroyTray();
   });
 
   app.on('window-all-closed', () => {
-    // On non-macOS platforms, quit when all windows are closed.
+    // On non-macOS platforms, quit when all windows are closed — but only when
+    // this is a real quit. With "minimize to tray" the window is hidden (not
+    // closed), so this event does not fire; if it does fire under the "quit"
+    // behavior, honor it. Guarding on `isQuitting` is unnecessary here because
+    // hiding never triggers this event, but we keep the platform check. (Req 14)
     if (process.platform !== 'darwin') {
       app.quit();
     }

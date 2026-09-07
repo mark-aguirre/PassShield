@@ -38,6 +38,11 @@ export interface ItemListProps {
    * of {@link ItemSummary.isFavorite}. _(Req 7.4)_
    */
   onToggleFavorite?: (id: string, next: boolean) => void;
+  /**
+   * Bumped by the parent whenever the item set may have changed (e.g. after a
+   * favorite toggle) so the list re-fetches its metadata.
+   */
+  refreshToken?: number;
 }
 
 /** Selectable sort options exposed by the list header. _(Req 17.2)_ */
@@ -74,6 +79,7 @@ export function ItemList({
   selectedItemId,
   onSelectItem,
   onToggleFavorite,
+  refreshToken,
 }: ItemListProps) {
   const [sort, setSort] = useState<ItemSort>('titleAsc');
   const [items, setItems] = useState<ItemSummary[]>([]);
@@ -101,7 +107,10 @@ export function ItemList({
 
   useEffect(() => {
     void loadItems();
-  }, [loadItems]);
+    // `refreshToken` is an intentional trigger: bumping it re-fetches the list
+    // after external mutations (e.g. a favorite toggle) even though it is not
+    // read inside `loadItems`.
+  }, [loadItems, refreshToken]);
 
   function handleStarClick(item: ItemSummary, event: React.MouseEvent) {
     event.stopPropagation();

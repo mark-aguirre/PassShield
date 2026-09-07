@@ -77,6 +77,18 @@ export type CreateVaultInputParsed = z.infer<typeof createVaultInputSchema>;
 export const unlockInputSchema = z.string().min(1);
 export type UnlockInputParsed = z.infer<typeof unlockInputSchema>;
 
+/**
+ * Input for `vault.changeMasterPassword`. All three fields must be present and
+ * non-empty; the vault service enforces that `newPassword` equals
+ * `confirmPassword` and re-verifies `currentPassword`. _(Req 12)_
+ */
+export const changeMasterPasswordInputSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(1),
+  confirmPassword: z.string().min(1),
+});
+export type ChangeMasterPasswordInputParsed = z.infer<typeof changeMasterPasswordInputSchema>;
+
 // ---------------------------------------------------------------------------
 // items.*
 // ---------------------------------------------------------------------------
@@ -287,6 +299,7 @@ export const ipcInputSchemas = {
   vault: {
     create: createVaultInputSchema,
     unlock: unlockInputSchema,
+    changeMasterPassword: changeMasterPasswordInputSchema,
   },
   items: {
     list: itemListFilterSchema,

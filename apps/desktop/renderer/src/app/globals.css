@@ -174,4 +174,33 @@
   .app-root {
     min-height: 100vh;
   }
+
+  /*
+   * Interactive affordance: Tailwind v4 no longer applies `cursor: pointer` to
+   * native buttons by default, so clickable elements would otherwise show the
+   * default arrow cursor. Restore the pointer cursor for every interactive
+   * control (buttons, links, selects, role="button", and elements that opt in
+   * via `[data-slot]` from shadcn/ui), and show the disabled cursor when the
+   * control is disabled/aria-disabled.
+   */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a[href],
+  label[for],
+  select:not(:disabled),
+  summary,
+  [data-slot='select-trigger']:not([data-disabled]),
+  [data-slot='dropdown-menu-item']:not([data-disabled]),
+  [data-slot='switch']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role='button'][aria-disabled='true'],
+  [data-disabled],
+  select:disabled,
+  input:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
 }

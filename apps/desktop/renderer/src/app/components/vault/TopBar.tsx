@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { ItemType } from '@passshield/contracts';
-import { ChevronDown, Lock, Plus, Search, Settings, ShieldCheck } from 'lucide-react';
+import { ChevronDown, Lock, Plus, Search, Settings } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -86,9 +86,12 @@ export function TopBar({
   return (
     <header className="flex h-16 items-center gap-4 bg-sidebar px-4 text-sidebar-foreground">
       <div className="flex min-w-[200px] items-center gap-2">
-        <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <ShieldCheck className="size-5" />
-        </span>
+        <img
+          src="./logo.png"
+          alt="passShield logo"
+          className="size-9 rounded-xl object-contain shadow-sm"
+        />
+
         <span className="text-lg font-bold tracking-tight">
           pass<span className="text-primary">Shield</span>
         </span>

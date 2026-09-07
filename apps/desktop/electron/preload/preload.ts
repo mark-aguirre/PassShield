@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type {
   Category,
   CategoryWithCount,
+  ChangeMasterPasswordInput,
   CreateVaultInput,
   GeneratedPassword,
   GeneratorOptions,
@@ -53,6 +54,7 @@ const CHANNELS = {
     unlock: 'vault:unlock',
     lock: 'vault:lock',
     status: 'vault:status',
+    changeMasterPassword: 'vault:changeMasterPassword',
   },
   items: {
     list: 'items:list',
@@ -105,6 +107,8 @@ const passShieldApi: PassShieldApi = {
       ipcRenderer.invoke(CHANNELS.vault.unlock, password),
     lock: (): Promise<void> => ipcRenderer.invoke(CHANNELS.vault.lock),
     status: (): Promise<VaultStatus> => ipcRenderer.invoke(CHANNELS.vault.status),
+    changeMasterPassword: (input: ChangeMasterPasswordInput): Promise<Result> =>
+      ipcRenderer.invoke(CHANNELS.vault.changeMasterPassword, input),
   },
 
   items: {

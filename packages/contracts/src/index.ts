@@ -188,6 +188,22 @@ export interface VaultStatus {
   autoLockMinutes: number;
 }
 
+/**
+ * Input for `vault.changeMasterPassword`. The current password is re-verified
+ * before any change, and the new password must equal its confirmation. On
+ * success the main process re-encrypts every item under a key derived from the
+ * new password and recomputes the stored verifier. No secret values cross the
+ * IPC boundary beyond these passwords. _(Req 12)_
+ */
+export interface ChangeMasterPasswordInput {
+  /** The current master password, re-verified before any change is made. */
+  currentPassword: string;
+  /** The new master password to set. */
+  newPassword: string;
+  /** Confirmation of the new master password; must match `newPassword`. */
+  confirmPassword: string;
+}
+
 /** Scope selector for `items.list`. */
 export type ItemScope = 'all' | 'favorites' | 'recent' | 'logins' | 'notes' | 'category';
 
@@ -301,6 +317,12 @@ export interface PassShieldApi {
     lock(): Promise<void>;
     /** Current lock state and auto-lock configuration. _(Req 2.6)_ */
     status(): Promise<VaultStatus>;
+    /**
+     * Change the master password. Re-verifies the current password, then
+     * re-encrypts the vault under a key derived from the new password and
+     * updates the stored verifier. _(Req 12)_
+     */
+    changeMasterPassword(input: ChangeMasterPasswordInput): Promise<Result>;
   };
 
   items: {

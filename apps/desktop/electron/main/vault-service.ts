@@ -39,11 +39,13 @@ import {
   deleteCategory,
   deleteItem,
   getItemById,
+  listAllItemRowsForReencryption,
   listCategoriesWithCounts,
   listItems,
   openDatabase,
   restoreItem,
   searchItems,
+  setItemEncryptedPayload,
   trashItem,
   updateCategory,
   updateItem,
@@ -57,6 +59,7 @@ import {
 import type {
   Category,
   CategoryWithCount,
+  ChangeMasterPasswordInput,
   CreateVaultInput,
   ItemDetail,
   ItemListFilter,
@@ -362,6 +365,128 @@ export class VaultService {
     this.logger?.info('vault unlocked');
     // Anchor the auto-lock inactivity timer to this unlock. (Req 3.1)
     this.notifyUnlocked();
+    return ok(undefined);
+  }
+
+  /**
+   * Change the master password. Requires an unlocked vault.
+   *
+   * PassShield derives the AEAD key directly from the master password (there is
+   * no wrapped intermediate key), so changing the password means re-encrypting
+   * every item under a freshly derived key. The steps are:
+   *   1. Re-verify the current password against the stored verifier — a wrong
+   *      current password is rejected without touching anything. (Req 12.2)
+   *   2. Validate the new password (non-empty, matches its confirmation).
+   *   3. Derive a new key from a new salt and build a new verifier.
+   *   4. In ONE SQLite transaction: decrypt every item payload with the old key
+   *      and re-encrypt it with the new key (payload-only writes, so item
+   *      version/timestamps are untouched), then rewrite the vault row's salt
+   *      and verifier. If anything fails the transaction rolls back and the old
+   *      key/verifier remain valid.
+   *   5. Swap the in-memory key to the new key and zero the old key material.
+   *
+   * Every item — including trashed ones — is re-encrypted so nothing becomes
+   * permanently unreadable under the new key. No secret ever leaves the main
+   * process. (Req 12)
+   */
+  async changeMasterPassword(input: ChangeMasterPasswordInput): Promise<Result> {
+    const state = this.state;
+    if (state === null) {
+      return fail('locked', 'The vault is locked.');
+    }
+
+    if (input.newPassword !== input.confirmPassword) {
+      return fail('validation', 'The confirmation password does not match.');
+    }
+    if (input.newPassword.length === 0) {
+      return fail('validation', 'A new master password is required.');
+    }
+
+    // 1. Re-verify the current password. (Req 12.2)
+    let verifier: VerifierRecord | null;
+    try {
+      verifier = this.readVerifier(state.db);
+    } catch {
+      return fail('io', 'Could not change the master password.');
+    }
+    if (verifier === null) {
+      return fail('io', 'Could not change the master password.');
+    }
+
+    let currentValid: boolean;
+    try {
+      currentValid = await verify(input.currentPassword, verifier);
+    } catch {
+      return fail('auth', 'The current password is incorrect.');
+    }
+    if (!currentValid) {
+      return fail('auth', 'The current password is incorrect.');
+    }
+
+    // 2 + 3. Derive the new key/salt/verifier off the transaction so the
+    // (CPU-bound) scrypt work does not hold the SQLite write lock.
+    let newKey: VaultKey;
+    let newVerifier: VerifierRecord;
+    try {
+      const newSalt = generateSalt();
+      newKey = await deriveKey(input.newPassword, newSalt);
+      newVerifier = createVerifier(newKey, newSalt);
+    } catch {
+      return fail('io', 'Could not change the master password.');
+    }
+
+    // 4. Re-encrypt every payload and rewrite the vault row atomically. If any
+    // row fails to decrypt/encrypt the whole change rolls back, leaving the
+    // vault fully readable under the existing password.
+    const oldKey = state.key;
+    const ts = new Date().toISOString();
+    try {
+      const reencryptAll = state.db.transaction(() => {
+        const rows = listAllItemRowsForReencryption(state.db);
+        for (const row of rows) {
+          const encrypted = JSON.parse(row.encrypted_payload) as EncryptedPayload;
+          const plaintext = decrypt(oldKey, encrypted);
+          const reEncrypted = encrypt(newKey, plaintext);
+          // Zero the transient plaintext before dropping the reference.
+          plaintext.fill(0);
+          setItemEncryptedPayload(state.db, row.id, JSON.stringify(reEncrypted));
+        }
+        state.db
+          .prepare(
+            /* sql */ `
+            UPDATE vault
+               SET kdf_salt = @kdf_salt,
+                   verifier = @verifier,
+                   updated_at = @updated_at
+             WHERE id = @id
+          `,
+          )
+          .run({
+            id: VAULT_ROW_ID,
+            kdf_salt: newVerifier.salt,
+            verifier: JSON.stringify(newVerifier),
+            updated_at: ts,
+          });
+      });
+      reencryptAll();
+    } catch {
+      // Transaction rolled back; discard the unused new key and keep the old.
+      try {
+        newKey.key.fill(0);
+      } catch {
+        // Ignore: buffer may be non-writable in some environments.
+      }
+      return fail('io', 'Could not change the master password.');
+    }
+
+    // 5. Swap the in-memory key to the new one and zero the old key material.
+    this.state = { key: newKey, db: state.db };
+    try {
+      oldKey.key.fill(0);
+    } catch {
+      // Ignore: buffer may be non-writable in some environments.
+    }
+    this.logger?.info('master password changed');
     return ok(undefined);
   }
 

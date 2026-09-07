@@ -49,6 +49,9 @@ export {
   trashItem,
   restoreItem,
   deleteItem,
+  // Re-encryption support (master-password change)
+  listAllItemRowsForReencryption,
+  setItemEncryptedPayload,
   // Category CRUD
   createCategory,
   updateCategory,
@@ -59,6 +62,7 @@ export {
   // Types
   type CreateItemInput,
   type UpdateItemInput,
+  type ItemPayloadRow,
   type ItemScope,
   type ItemSort,
   type ListItemsOptions,
