@@ -63,11 +63,40 @@ export interface LoginPayload {
 }
 
 /**
+ * A file attached to a secure note. Modeled on an email attachment: the raw
+ * bytes are Base64-encoded (MIME-style) into `data` and travel inside the same
+ * AEAD `encrypted_payload` as the note body, so attachments inherit the vault's
+ * encryption with no separate storage. `filename`, `mimeType`, and `size`
+ * describe the original file for display and for reconstructing a download.
+ * _(Req 5.1)_
+ */
+export interface NoteAttachment {
+  /** Original file name, used for display and download. */
+  filename: string;
+  /** MIME content type (e.g. `application/pdf`), used to rebuild the data URL. */
+  mimeType: string;
+  /** Original size of the decoded file, in bytes. */
+  size: number;
+  /** Base64-encoded file bytes (no `data:` prefix). */
+  data: string;
+}
+
+/**
  * Decrypted secret fields for a secure note. Never persisted in plaintext;
  * lives inside the AEAD `encrypted_payload`. _(Req 5.1)_
+ *
+ * A note is composed like an email message: an optional `subject` line, a
+ * markdown `content` body, and optional file `attachments`. `subject` and
+ * `attachments` are optional so notes created before this shape existed (which
+ * carry only `content`) remain valid.
  */
 export interface NotePayload {
+  /** Markdown note body. */
   content: string;
+  /** Optional subject/heading line, like an email subject. */
+  subject?: string;
+  /** Optional Base64-encoded file attachments. */
+  attachments?: NoteAttachment[];
 }
 
 /**

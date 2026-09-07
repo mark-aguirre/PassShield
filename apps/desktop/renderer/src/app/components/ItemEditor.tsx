@@ -40,21 +40,31 @@
  * _(Req 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3, 20.1, 20.2, 20.3, 20.4)_
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type {
   Category,
   CategoryWithCount,
   GeneratorOptions,
   ItemType,
+  NoteAttachment,
   SaveItemInput,
 } from '@passshield/contracts';
 import {
   ArrowLeft,
+  Bold,
+  Code,
   Copy,
   Eye,
   EyeOff,
+  Heading,
   ImagePlus,
+  Italic,
   KeyRound,
+  Link as LinkIcon,
+  List,
+  ListOrdered,
+  Paperclip,
+  Quote,
   RefreshCw,
   SquareArrowOutUpRight,
   Trash2,
@@ -62,7 +72,8 @@ import {
 } from 'lucide-react';
 
 import { Markdown } from '@/app/components/Markdown';
-import { imageBlobToEmbeddable } from '@/lib/image';
+import { useNoteComposer } from '@/app/hooks/useNoteComposer';
+import { formatBytes } from '@/lib/attachment';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -145,8 +156,10 @@ interface FormState {
   password: string;
   website: string;
   loginNotes: string;
-  // Note payload field
+  // Note payload fields (composed like an email: subject + body + attachments)
+  subject: string;
   content: string;
+  attachments: NoteAttachment[];
 }
 
 /** Builds a blank form for create mode. */
@@ -160,7 +173,9 @@ function blankForm(itemType: ItemType): FormState {
     password: '',
     website: '',
     loginNotes: '',
+    subject: '',
     content: '',
+    attachments: [],
   };
 }
 
@@ -185,15 +200,22 @@ export function ItemEditor({
   const [trashing, setTrashing] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [titleTouched, setTitleTouched] = useState(false);
-  // Note editor: toggle between the raw markdown "Write" textarea and a
-  // rendered "Preview" of the same content.
-  const [notePreview, setNotePreview] = useState(false);
-  // Feedback while a pasted/selected image is being embedded, and any
-  // image-specific error (kept separate from the save-level formError).
-  const [embeddingImage, setEmbeddingImage] = useState(false);
-  const [noteImageError, setNoteImageError] = useState<string | null>(null);
-  const noteContentRef = useRef<HTMLTextAreaElement>(null);
-  const noteImageInputRef = useRef<HTMLInputElement>(null);
+
+  // Note composition (inline images, file attachments, and the Write/Preview
+  // toggle) is a self-contained concern owned by this hook. It writes note
+  // content and attachments back through the callbacks below, so `form` stays
+  // the single source of truth. _(Req 5.1)_
+  const noteComposer = useNoteComposer({
+    mutateContent: (updater) =>
+      setForm((prev) => ({ ...prev, content: updater(prev.content) })),
+    appendAttachments: (added) =>
+      setForm((prev) => ({ ...prev, attachments: [...prev.attachments, ...added] })),
+    removeAttachmentAt: (index) =>
+      setForm((prev) => ({
+        ...prev,
+        attachments: prev.attachments.filter((_, i) => i !== index),
+      })),
+  });
 
   const titleInvalid = form.title.trim().length === 0;
 
@@ -259,6 +281,9 @@ export function ItemEditor({
           next.loginNotes = item.payload.notes;
         } else {
           next.content = item.payload.content;
+          // Legacy notes carry only `content`; default the newer fields.
+          next.subject = item.payload.subject ?? '';
+          next.attachments = item.payload.attachments ?? [];
         }
         setForm(next);
         setLoad({ status: 'ready' });
@@ -277,84 +302,6 @@ export function ItemEditor({
   /** Patch helper for controlled form fields. */
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  /**
-   * Insert a snippet into the note content at the current caret position (or
-   * replace the current selection), then restore the caret after the insert.
-   * Falls back to appending when the textarea ref is unavailable.
-   */
-  function insertIntoNote(snippet: string) {
-    const el = noteContentRef.current;
-    setForm((prev) => {
-      if (!el) {
-        const needsGap = prev.content.length > 0 && !prev.content.endsWith('\n');
-        return { ...prev, content: prev.content + (needsGap ? '\n' : '') + snippet };
-      }
-      const start = el.selectionStart ?? prev.content.length;
-      const end = el.selectionEnd ?? prev.content.length;
-      const next = prev.content.slice(0, start) + snippet + prev.content.slice(end);
-      // Restore the caret just past the inserted text on the next tick.
-      const caret = start + snippet.length;
-      requestAnimationFrame(() => {
-        el.focus();
-        el.setSelectionRange(caret, caret);
-      });
-      return { ...prev, content: next };
-    });
-  }
-
-  /**
-   * Turn an image blob into a size-bounded data URL and insert it as markdown
-   * image syntax on its own line. Surfaces a friendly error on failure.
-   */
-  async function embedImageBlob(blob: Blob, name?: string) {
-    setNoteImageError(null);
-    setEmbeddingImage(true);
-    try {
-      const result = await imageBlobToEmbeddable(blob, name ?? 'pasted-image');
-      if (!result.ok) {
-        setNoteImageError(result.error);
-        return;
-      }
-      // Ensure the image sits on its own line so it renders as a block figure.
-      insertIntoNote(`\n![${result.alt}](${result.dataUrl})\n`);
-      // Switching off preview keeps the caret usable right after inserting.
-      setNotePreview(false);
-    } catch {
-      setNoteImageError('Could not embed this image.');
-    } finally {
-      setEmbeddingImage(false);
-    }
-  }
-
-  /**
-   * Clipboard paste handler for the note textarea. If the clipboard carries an
-   * image, embed it and prevent the default (which would paste nothing useful).
-   * Plain-text pastes fall through to the browser's default behaviour.
-   */
-  function handleNotePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const items = Array.from(event.clipboardData?.items ?? []);
-    const imageItem = items.find((it) => it.kind === 'file' && it.type.startsWith('image/'));
-    if (!imageItem) {
-      return; // let normal text paste happen
-    }
-    const file = imageItem.getAsFile();
-    if (!file) {
-      return;
-    }
-    event.preventDefault();
-    void embedImageBlob(file, file.name);
-  }
-
-  /** Handle an image chosen through the hidden file input. */
-  function handleNoteImageFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    // Reset the input so selecting the same file again re-triggers change.
-    event.target.value = '';
-    if (file) {
-      void embedImageBlob(file, file.name);
-    }
   }
 
   /**
@@ -382,10 +329,17 @@ export function ItemEditor({
         },
       };
     }
+    const subject = form.subject.trim();
     return {
       ...base,
       itemType: 'note',
-      payload: { content: form.content },
+      payload: {
+        content: form.content,
+        // Only include the newer fields when set, so notes without a subject or
+        // attachments serialize to the same shape as before this feature.
+        ...(subject.length > 0 ? { subject } : {}),
+        ...(form.attachments.length > 0 ? { attachments: form.attachments } : {}),
+      },
     };
   }
 
@@ -687,7 +641,21 @@ export function ItemEditor({
               </div>
             </>
           ) : (
-            <div className="flex flex-col gap-2">
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="note-subject">
+                  Subject <span className="font-normal text-muted-foreground">(optional)</span>
+                </Label>
+                <Input
+                  id="note-subject"
+                  type="text"
+                  placeholder="Example: Recovery codes for my bank"
+                  value={form.subject}
+                  onChange={(event) => update('subject', event.target.value)}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="note-content">Content</Label>
                 <div className="flex items-center gap-1">
@@ -695,11 +663,11 @@ export function ItemEditor({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => noteImageInputRef.current?.click()}
-                    disabled={embeddingImage}
+                    onClick={() => noteComposer.noteImageInputRef.current?.click()}
+                    disabled={noteComposer.embeddingImage}
                   >
                     <ImagePlus className="size-4" />
-                    {embeddingImage ? 'Adding…' : 'Add image'}
+                    {noteComposer.embeddingImage ? 'Adding…' : 'Add image'}
                   </Button>
                   <div
                     className="ml-1 flex items-center gap-1"
@@ -709,18 +677,18 @@ export function ItemEditor({
                     <Button
                       type="button"
                       size="sm"
-                      variant={notePreview ? 'ghost' : 'secondary'}
-                      aria-pressed={!notePreview}
-                      onClick={() => setNotePreview(false)}
+                      variant={noteComposer.notePreview ? 'ghost' : 'secondary'}
+                      aria-pressed={!noteComposer.notePreview}
+                      onClick={() => noteComposer.setNotePreview(false)}
                     >
                       Write
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      variant={notePreview ? 'secondary' : 'ghost'}
-                      aria-pressed={notePreview}
-                      onClick={() => setNotePreview(true)}
+                      variant={noteComposer.notePreview ? 'secondary' : 'ghost'}
+                      aria-pressed={noteComposer.notePreview}
+                      onClick={() => noteComposer.setNotePreview(true)}
                       disabled={!form.content}
                     >
                       Preview
@@ -728,7 +696,63 @@ export function ItemEditor({
                   </div>
                 </div>
               </div>
-              {notePreview ? (
+              <div
+                className="flex flex-wrap items-center gap-0.5 rounded-md border border-input bg-muted/30 p-1"
+                role="toolbar"
+                aria-label="Text formatting"
+              >
+                <FormatButton
+                  label="Bold"
+                  icon={<Bold className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={() => noteComposer.wrapSelection('**', '**', 'bold text')}
+                />
+                <FormatButton
+                  label="Italic"
+                  icon={<Italic className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={() => noteComposer.wrapSelection('*', '*', 'italic text')}
+                />
+                <FormatButton
+                  label="Inline code"
+                  icon={<Code className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={() => noteComposer.wrapSelection('`', '`', 'code')}
+                />
+                <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+                <FormatButton
+                  label="Heading"
+                  icon={<Heading className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={() => noteComposer.prefixSelectedLines(() => '## ')}
+                />
+                <FormatButton
+                  label="Bulleted list"
+                  icon={<List className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={() => noteComposer.prefixSelectedLines(() => '- ')}
+                />
+                <FormatButton
+                  label="Numbered list"
+                  icon={<ListOrdered className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={() => noteComposer.prefixSelectedLines((index) => `${index + 1}. `)}
+                />
+                <FormatButton
+                  label="Quote"
+                  icon={<Quote className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={() => noteComposer.prefixSelectedLines(() => '> ')}
+                />
+                <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+                <FormatButton
+                  label="Link"
+                  icon={<LinkIcon className="size-4" />}
+                  disabled={noteComposer.notePreview}
+                  onClick={noteComposer.insertLink}
+                />
+              </div>
+              {noteComposer.notePreview ? (
                 <Markdown
                   source={form.content}
                   className="min-h-[236px] rounded-md border border-input bg-transparent p-3 text-sm leading-relaxed text-foreground"
@@ -736,31 +760,98 @@ export function ItemEditor({
               ) : (
                 <Textarea
                   id="note-content"
-                  ref={noteContentRef}
+                  ref={noteComposer.noteContentRef}
                   rows={10}
                   placeholder="Supports markdown, and you can paste an image directly here."
                   value={form.content}
                   onChange={(event) => update('content', event.target.value)}
-                  onPaste={handleNotePaste}
+                  onPaste={noteComposer.handleNotePaste}
                 />
               )}
               <input
-                ref={noteImageInputRef}
+                ref={noteComposer.noteImageInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleNoteImageFile}
+                onChange={noteComposer.handleNoteImageFile}
               />
-              {noteImageError ? (
+              {noteComposer.noteImageError ? (
                 <span role="alert" className="text-xs text-destructive">
-                  {noteImageError}
+                  {noteComposer.noteImageError}
                 </span>
               ) : (
                 <span className="text-xs text-muted-foreground">
                   Markdown formatting is supported. Paste or add an image to embed it inline.
                 </span>
               )}
-            </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="note-attachments">
+                    Attachments{' '}
+                    <span className="font-normal text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => noteComposer.noteAttachmentInputRef.current?.click()}
+                    disabled={noteComposer.attachingFile}
+                  >
+                    <Paperclip className="size-4" />
+                    {noteComposer.attachingFile ? 'Attaching…' : 'Attach file'}
+                  </Button>
+                </div>
+                {form.attachments.length > 0 && (
+                  <ul className="flex flex-col gap-2" aria-label="Attached files">
+                    {form.attachments.map((attachment, index) => (
+                      <li
+                        key={`${attachment.filename}-${index}`}
+                        className="flex items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2"
+                      >
+                        <Paperclip className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-sm text-foreground">
+                            {attachment.filename}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatBytes(attachment.size)}
+                          </span>
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="ml-auto shrink-0"
+                          aria-label={`Remove ${attachment.filename}`}
+                          onClick={() => noteComposer.removeAttachment(index)}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <input
+                  ref={noteComposer.noteAttachmentInputRef}
+                  id="note-attachments"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={noteComposer.handleNoteAttachmentFiles}
+                />
+                {noteComposer.attachmentError ? (
+                  <span role="alert" className="text-xs text-destructive">
+                    {noteComposer.attachmentError}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">
+                    Files are encrypted with the note. Up to 5 MB each.
+                  </span>
+                )}
+              </div>
+            </>
           )}
 
           {formError && (
@@ -868,6 +959,37 @@ function SidePanelAction({
         <span className="text-xs text-muted-foreground">{subtitle}</span>
       </span>
     </button>
+  );
+}
+
+/** A single icon button in the note markdown formatting toolbar. */
+function FormatButton({
+  label,
+  icon,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Button
+      type="button"
+      size="icon"
+      variant="ghost"
+      className="size-8"
+      title={label}
+      aria-label={label}
+      // Keep focus in the textarea so the current selection isn't lost when the
+      // button is pressed.
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {icon}
+    </Button>
   );
 }
 

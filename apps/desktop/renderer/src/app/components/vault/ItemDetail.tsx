@@ -31,10 +31,12 @@ import type {
 import {
   Check,
   Copy,
+  Download,
   Eye,
   EyeOff,
   KeyRound,
   MoreHorizontal,
+  Paperclip,
   Pencil,
   SquareArrowOutUpRight,
   Star,
@@ -42,6 +44,7 @@ import {
 } from 'lucide-react';
 
 import { Markdown } from '@/app/components/Markdown';
+import { attachmentToDataUrl, formatBytes } from '@/lib/attachment';
 import { ItemIcon } from '@/app/components/vault/ItemIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -325,11 +328,19 @@ function NoteFields({
   payload: NotePayload;
   category: ResolvedCategory;
 }) {
+  const attachments = payload.attachments ?? [];
   return (
     <>
       <Field label="Category">
         <CategoryValue category={category} />
       </Field>
+      {payload.subject && (
+        <Field label="Subject">
+          <div className="rounded-lg bg-muted/60 p-3 text-sm font-medium text-foreground">
+            {payload.subject}
+          </div>
+        </Field>
+      )}
       <Field label="Note">
         {payload.content ? (
           <Markdown
@@ -342,6 +353,34 @@ function NoteFields({
           </div>
         )}
       </Field>
+      {attachments.length > 0 && (
+        <Field label="Attachments">
+          <ul className="flex flex-col gap-2">
+            {attachments.map((attachment, index) => (
+              <li
+                key={`${attachment.filename}-${index}`}
+                className="flex items-center gap-3 rounded-lg border border-border bg-muted/60 px-3 py-2"
+              >
+                <Paperclip className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm text-foreground">{attachment.filename}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatBytes(attachment.size)}
+                  </span>
+                </span>
+                <a
+                  href={attachmentToDataUrl(attachment)}
+                  download={attachment.filename}
+                  className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  aria-label={`Download ${attachment.filename}`}
+                >
+                  <Download className="size-4" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Field>
+      )}
     </>
   );
 }

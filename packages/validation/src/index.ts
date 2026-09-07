@@ -51,9 +51,27 @@ export const loginPayloadSchema = z.object({
 });
 export type LoginPayloadInput = z.infer<typeof loginPayloadSchema>;
 
-/** Secret fields for a secure note. _(Req 5.1)_ */
+/**
+ * A single note attachment: an email-style, Base64-encoded file. `size` is a
+ * non-negative integer (bytes) and `data` is the Base64 payload (no `data:`
+ * prefix). Shape mirrors `NoteAttachment` in `@passshield/contracts`. _(Req 5.1)_
+ */
+export const noteAttachmentSchema = z.object({
+  filename: z.string(),
+  mimeType: z.string(),
+  size: z.number().int().min(0),
+  data: z.string(),
+});
+export type NoteAttachmentInput = z.infer<typeof noteAttachmentSchema>;
+
+/**
+ * Secret fields for a secure note. `subject` and `attachments` are optional so
+ * legacy notes carrying only `content` still validate at the boundary. _(Req 5.1)_
+ */
 export const notePayloadSchema = z.object({
   content: z.string(),
+  subject: z.string().optional(),
+  attachments: z.array(noteAttachmentSchema).optional(),
 });
 export type NotePayloadInput = z.infer<typeof notePayloadSchema>;
 
