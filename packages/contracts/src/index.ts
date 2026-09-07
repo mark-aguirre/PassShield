@@ -49,6 +49,11 @@ export interface ItemSummary {
   updatedAt: string;
   /** ISO 8601 soft-delete (trash) timestamp, or null when active. */
   deletedAt: string | null;
+  /**
+   * Parent item id when this item is a sub-page of another item, or null when
+   * it is a top-level item. Enables secure-note sub-pages (arbitrary depth).
+   */
+  parentId: string | null;
 }
 
 /**
@@ -259,6 +264,12 @@ export type SaveItemInput =
       categoryId: string | null;
       isFavorite: boolean;
       payload: LoginPayload;
+      /**
+       * Parent item id when saving a sub-page, or null/omitted for a top-level
+       * item. Logins are always top-level in practice, but the field is present
+       * on both arms so the update round-trip preserves it uniformly.
+       */
+      parentId?: string | null;
     }
   | {
       id?: string;
@@ -267,6 +278,11 @@ export type SaveItemInput =
       categoryId: string | null;
       isFavorite: boolean;
       payload: NotePayload;
+      /**
+       * Parent note id when this note is a sub-page, or null/omitted for a
+       * top-level note. Enables arbitrary-depth secure-note sub-pages.
+       */
+      parentId?: string | null;
     };
 
 /**
@@ -369,6 +385,12 @@ export interface PassShieldApi {
     delete(id: string): Promise<Result>;
     /** Search over plaintext metadata. No secrets. _(Req 6.1, 6.2)_ */
     search(query: string, sort?: ItemSort): Promise<ItemSummary[]>;
+    /**
+     * List the direct sub-pages (children) of a note. Metadata only, no
+     * secrets. Returns an empty array when the parent has none or the vault is
+     * locked.
+     */
+    listChildren(parentId: string, sort?: ItemSort): Promise<ItemSummary[]>;
   };
 
   categories: {

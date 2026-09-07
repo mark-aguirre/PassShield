@@ -155,6 +155,9 @@ export const saveItemInputSchema = z.discriminatedUnion('itemType', [
     categoryId: idSchema.nullable(),
     isFavorite: z.boolean(),
     payload: loginPayloadSchema,
+    // Sub-page parent id. Optional + nullable so callers that never set it
+    // (and legacy renderer builds) still validate as top-level items. _(Req 5.1)_
+    parentId: idSchema.nullable().optional(),
   }),
   z.object({
     id: idSchema.optional(),
@@ -163,9 +166,18 @@ export const saveItemInputSchema = z.discriminatedUnion('itemType', [
     categoryId: idSchema.nullable(),
     isFavorite: z.boolean(),
     payload: notePayloadSchema,
+    // Parent note id when this note is a sub-page; null/omitted = top-level.
+    parentId: idSchema.nullable().optional(),
   }),
 ]);
 export type SaveItemInputParsed = z.infer<typeof saveItemInputSchema>;
+
+/**
+ * Input for `items.listChildren`: the parent item id whose direct sub-pages
+ * should be listed. _(Req 5.1)_
+ */
+export const listChildrenInputSchema = idSchema;
+export type ListChildrenInputParsed = z.infer<typeof listChildrenInputSchema>;
 
 /** Input for `items.get`: the item id. _(Req 9.1)_ */
 export const itemIdInputSchema = idSchema;
@@ -328,6 +340,8 @@ export const ipcInputSchemas = {
     restore: itemIdInputSchema,
     delete: itemIdInputSchema,
     search: searchInputSchema,
+    listChildren: listChildrenInputSchema,
+    listChildrenSort: itemSortSchema,
   },
   categories: {
     save: saveCategoryInputSchema,

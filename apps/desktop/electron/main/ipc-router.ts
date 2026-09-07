@@ -76,6 +76,7 @@ export const IpcChannels = {
     restore: 'items:restore',
     delete: 'items:delete',
     search: 'items:search',
+    listChildren: 'items:listChildren',
   },
   categories: {
     list: 'categories:list',
@@ -331,6 +332,31 @@ export function registerIpcRouter(
     const result = vault.searchItems(parsed.data.query, parsed.data.sort);
     return result.ok ? result.value : [];
   });
+
+  // items:listChildren returns the direct sub-pages of a parent item as a bare
+  // ItemSummary[] (metadata only, no secrets). A malformed request or locked
+  // vault yields an empty list. (Req 6.4, 11.5)
+  handle(
+    IpcChannels.items.listChildren,
+    (rawParentId: unknown, rawSort: unknown): ItemSummary[] => {
+      const parsed = ipcInputSchemas.items.listChildren.safeParse(rawParentId);
+      if (!parsed.success) {
+        return [];
+      }
+
+      let sort: ReturnType<typeof ipcInputSchemas.items.listChildrenSort.parse> | undefined;
+      if (rawSort !== undefined && rawSort !== null) {
+        const parsedSort = ipcInputSchemas.items.listChildrenSort.safeParse(rawSort);
+        if (!parsedSort.success) {
+          return [];
+        }
+        sort = parsedSort.data;
+      }
+
+      const result = vault.listChildren(parsed.data, sort);
+      return result.ok ? result.value : [];
+    },
+  );
 
   // -------------------------------------------------------------------------
   // categories.*  (secret gating is enforced by the VaultService)

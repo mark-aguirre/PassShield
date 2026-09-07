@@ -43,6 +43,11 @@ export interface VaultItemRow {
   updated_at: string;
   /** ISO 8601 soft-delete timestamp, or null when active. (Req 20.1) */
   deleted_at: string | null;
+  /**
+   * Parent item id when this item is a sub-page, or null when it is a
+   * top-level item. Self-references `vault_item(id)` with ON DELETE CASCADE.
+   */
+  parent_id: string | null;
 }
 
 /** A row of the `category` table. */

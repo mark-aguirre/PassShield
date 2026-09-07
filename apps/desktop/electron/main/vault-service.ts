@@ -35,12 +35,14 @@ import {
 import {
   closeDatabase,
   createCategory,
+  collectSubtreeIds,
   createItem,
   deleteCategory,
   deleteItem,
   getItemById,
   listAllItemRowsForReencryption,
   listCategoriesWithCounts,
+  listChildren,
   listItems,
   openDatabase,
   restoreItem,
@@ -163,6 +165,7 @@ function toItemSummary(row: VaultItemRow): ItemSummary {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+    parentId: row.parent_id,
   };
 }
 
@@ -548,6 +551,10 @@ export class VaultService {
       scope,
       categoryId: filter?.categoryId ?? null,
       sort: toDbSort(sort),
+      // Sub-pages never appear in the main lists; they are browsed from their
+      // parent note's "Sub-pages" section via listChildren. This keeps every
+      // built-in scope (all/favorites/recent/notes/category) top-level only.
+      topLevelOnly: true,
     });
     return ok(rows.map(toItemSummary));
   }
@@ -603,6 +610,27 @@ export class VaultService {
       return fail('io', 'Could not save the item.');
     }
 
+    const parentId = input.parentId ?? null;
+
+    // Validate the parent relationship (sub-pages). A parent must exist; an
+    // item cannot be its own parent; and on update the new parent must not be a
+    // descendant of the item (which would create a cycle in the tree).
+    if (parentId !== null) {
+      if (input.id !== undefined && parentId === input.id) {
+        return fail('validation', 'An item cannot be its own parent.');
+      }
+      const parentRow = getItemById(state.db, parentId);
+      if (parentRow === null) {
+        return fail('validation', 'The parent item does not exist.');
+      }
+      if (input.id !== undefined) {
+        const subtree = collectSubtreeIds(state.db, input.id);
+        if (subtree.includes(parentId)) {
+          return fail('validation', 'An item cannot be moved under one of its own sub-pages.');
+        }
+      }
+    }
+
     if (input.id === undefined) {
       const row = createItem(state.db, {
         itemType: input.itemType,
@@ -610,6 +638,7 @@ export class VaultService {
         categoryId: input.categoryId,
         isFavorite: input.isFavorite,
         encryptedPayload,
+        parentId,
       });
       return ok(toItemSummary(row));
     }
@@ -620,11 +649,26 @@ export class VaultService {
       categoryId: input.categoryId,
       isFavorite: input.isFavorite,
       encryptedPayload,
+      parentId,
     });
     if (row === null) {
       return fail('not_found', 'Item not found.');
     }
     return ok(toItemSummary(row));
+  }
+
+  /**
+   * List the direct sub-pages (children) of a note. Returns non-secret
+   * summaries only; no payload is decrypted. Requires an unlocked vault so a
+   * locked renderer cannot enumerate items. (Req 6.4, 17, 2.5)
+   */
+  listChildren(parentId: string, sort?: ItemSort): Result<ItemSummary[]> {
+    const state = this.state;
+    if (state === null) {
+      return fail('locked', 'The vault is locked.');
+    }
+    const rows = listChildren(state.db, parentId, toDbSort(sort));
+    return ok(rows.map(toItemSummary));
   }
 
   /** Soft-delete (move to trash). Requires an unlocked vault. (Req 20.1, 20.4) */

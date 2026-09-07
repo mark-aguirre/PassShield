@@ -45,7 +45,7 @@ import {
  * existing item (by id).
  */
 type EditorState =
-  | { mode: 'create'; initialType: ItemType }
+  | { mode: 'create'; initialType: ItemType; parentId?: string | null }
   | { mode: 'edit'; itemId: string }
   | null;
 
@@ -214,6 +214,12 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
 
   const handleEditItem = useCallback((id: string) => {
     setEditor({ mode: 'edit', itemId: id });
+  }, []);
+
+  // Open the editor to create a new secure note nested under `parentId`. The
+  // created item becomes a sub-page of the note whose detail is open. _(Req 5.1)_
+  const handleAddSubPage = useCallback((parentId: string) => {
+    setEditor({ mode: 'create', initialType: 'note', parentId });
   }, []);
 
   // Toggle an item's favorite flag. The list pane carries only non-secret
@@ -419,6 +425,9 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
                     <ItemDetail
                       itemId={selectedItemId}
                       onEdit={handleEditItem}
+                      onOpenItem={selectItem}
+                      onAddSubPage={handleAddSubPage}
+                      refreshToken={refreshToken}
                       onClose={() => selectItem(null)}
                     />
                   </div>
@@ -433,6 +442,7 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
             <ItemEditor
               itemId={editor.mode === 'edit' ? editor.itemId : null}
               initialType={editor.mode === 'create' ? editor.initialType : undefined}
+              parentId={editor.mode === 'create' ? (editor.parentId ?? null) : null}
               onSaved={handleEditorSaved}
               onTrashed={handleEditorTrashed}
               onClose={handleEditorClose}

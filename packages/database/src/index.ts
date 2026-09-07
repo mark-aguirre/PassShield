@@ -13,7 +13,7 @@
  * (Req 1.4, 4.2, 5.2, 7.2, 13.2, 20.1, 21.1)
  */
 
-export { SCHEMA_V1, SCHEMA_VERSION } from './schema.js';
+export { SCHEMA_V1, SCHEMA_V2, SCHEMA_VERSION } from './schema.js';
 
 export {
   getSchemaVersion,
@@ -44,6 +44,8 @@ export {
   updateItem,
   getItemById,
   listItems,
+  listChildren,
+  collectSubtreeIds,
   listTrashedItems,
   searchItems,
   trashItem,

@@ -64,6 +64,7 @@ const CHANNELS = {
     restore: 'items:restore',
     delete: 'items:delete',
     search: 'items:search',
+    listChildren: 'items:listChildren',
   },
   categories: {
     list: 'categories:list',
@@ -122,6 +123,8 @@ const passShieldApi: PassShieldApi = {
     delete: (id: string): Promise<Result> => ipcRenderer.invoke(CHANNELS.items.delete, id),
     search: (query: string, sort?: ItemSort): Promise<ItemSummary[]> =>
       ipcRenderer.invoke(CHANNELS.items.search, { query, sort }),
+    listChildren: (parentId: string, sort?: ItemSort): Promise<ItemSummary[]> =>
+      ipcRenderer.invoke(CHANNELS.items.listChildren, parentId, sort),
   },
 
   categories: {

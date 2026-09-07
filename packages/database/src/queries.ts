@@ -73,6 +73,11 @@ export interface CreateItemInput {
   isFavorite: boolean;
   /** AEAD ciphertext of the secret fields, produced by the crypto layer. */
   encryptedPayload: string;
+  /**
+   * Parent item id when this item is a sub-page, or null/omitted for a
+   * top-level item. Self-references `vault_item(id)`.
+   */
+  parentId?: string | null;
 }
 
 /**
@@ -87,6 +92,11 @@ export interface UpdateItemInput {
   isFavorite: boolean;
   /** Fresh AEAD ciphertext of the (possibly edited) secret fields. */
   encryptedPayload: string;
+  /**
+   * Parent item id when this item is a sub-page, or null for a top-level item.
+   * Replaces the stored value on update.
+   */
+  parentId: string | null;
 }
 
 /** Scope selector for {@link listItems}, mirroring the IPC contract. */
@@ -109,6 +119,12 @@ export interface ListItemsOptions {
   sort?: ItemSort;
   /** Include trashed items. Defaults to false (active items only). */
   includeTrashed?: boolean;
+  /**
+   * Restrict the result to top-level items (`parent_id IS NULL`), hiding
+   * sub-pages from the main lists. Defaults to false. Sub-pages are browsed
+   * via {@link listChildren} from the parent's detail view.
+   */
+  topLevelOnly?: boolean;
 }
 
 /**
@@ -127,10 +143,10 @@ export function createItem(
     /* sql */ `
     INSERT INTO vault_item (
       id, item_type, title, category_id, is_favorite,
-      encrypted_payload, version, created_at, updated_at, deleted_at
+      encrypted_payload, version, created_at, updated_at, deleted_at, parent_id
     ) VALUES (
       @id, @item_type, @title, @category_id, @is_favorite,
-      @encrypted_payload, 1, @created_at, @updated_at, NULL
+      @encrypted_payload, 1, @created_at, @updated_at, NULL, @parent_id
     )
   `,
   ).run({
@@ -142,6 +158,7 @@ export function createItem(
     encrypted_payload: input.encryptedPayload,
     created_at: ts,
     updated_at: ts,
+    parent_id: input.parentId ?? null,
   });
 
   return getItemById(db, id, { includeTrashed: true })!;
@@ -166,6 +183,7 @@ export function updateItem(
            category_id = @category_id,
            is_favorite = @is_favorite,
            encrypted_payload = @encrypted_payload,
+           parent_id = @parent_id,
            version = version + 1,
            updated_at = @updated_at
      WHERE id = @id
@@ -177,6 +195,7 @@ export function updateItem(
       category_id: input.categoryId,
       is_favorite: toSqliteBool(input.isFavorite),
       encrypted_payload: input.encryptedPayload,
+      parent_id: input.parentId,
       updated_at: ts,
     });
 
@@ -239,6 +258,7 @@ export function listItems(
 ): VaultItemRow[] {
   const scope = options.scope ?? 'all';
   const includeTrashed = options.includeTrashed ?? false;
+  const topLevelOnly = options.topLevelOnly ?? false;
   const sort: ItemSort =
     scope === 'recent' ? 'recent' : (options.sort ?? 'titleAsc');
 
@@ -247,6 +267,10 @@ export function listItems(
 
   if (!includeTrashed) {
     conditions.push('deleted_at IS NULL');
+  }
+
+  if (topLevelOnly) {
+    conditions.push('parent_id IS NULL');
   }
 
   switch (scope) {
@@ -277,6 +301,51 @@ export function listItems(
   const sql = `SELECT * FROM vault_item ${where} ${orderByClause(sort)}`;
 
   return db.prepare(sql).all(params) as VaultItemRow[];
+}
+
+/**
+ * List the direct children (sub-pages) of a parent item, returning metadata +
+ * ciphertext only (no decryption). Active (non-trashed) children only, ordered
+ * by the given sort (defaults to title A–Z). Used by the detail view's
+ * "Sub-pages" section. Returns an empty array when the parent has no children.
+ */
+export function listChildren(
+  db: VaultDatabase,
+  parentId: string,
+  sort: ItemSort = 'titleAsc',
+): VaultItemRow[] {
+  const sql = `
+    SELECT * FROM vault_item
+     WHERE parent_id = @parent_id
+       AND deleted_at IS NULL
+     ${orderByClause(sort)}
+  `;
+
+  return db.prepare(sql).all({ parent_id: parentId }) as VaultItemRow[];
+}
+
+/**
+ * Collect the ids of an item and every descendant (children, grandchildren,
+ * ...) via a recursive walk over `parent_id`. Includes the root id itself.
+ * Used to cascade soft-delete/restore over an entire sub-tree.
+ */
+export function collectSubtreeIds(db: VaultDatabase, rootId: string): string[] {
+  const rows = db
+    .prepare(
+      /* sql */ `
+    WITH RECURSIVE subtree(id) AS (
+      SELECT id FROM vault_item WHERE id = @root_id
+      UNION ALL
+      SELECT vi.id
+        FROM vault_item vi
+        JOIN subtree s ON vi.parent_id = s.id
+    )
+    SELECT id FROM subtree
+  `,
+    )
+    .all({ root_id: rootId }) as Array<{ id: string }>;
+
+  return rows.map((r) => r.id);
 }
 
 /**
@@ -331,17 +400,27 @@ export function searchItems(
  * when the item does not exist or is already trashed.
  */
 export function trashItem(db: VaultDatabase, id: string): boolean {
-  const result = db
-    .prepare(
+  const run = db.transaction((rootId: string): boolean => {
+    const ts = nowIso();
+    // Trash the item together with its entire sub-tree so sub-pages are hidden
+    // from active views alongside their parent. Only currently-active rows are
+    // stamped, so an already-trashed descendant keeps its original timestamp.
+    const ids = collectSubtreeIds(db, rootId);
+    const stmt = db.prepare(
       /* sql */ `
-    UPDATE vault_item
-       SET deleted_at = @deleted_at
-     WHERE id = @id AND deleted_at IS NULL
-  `,
-    )
-    .run({ id, deleted_at: nowIso() });
+      UPDATE vault_item
+         SET deleted_at = @deleted_at
+       WHERE id = @id AND deleted_at IS NULL
+    `,
+    );
+    let changed = 0;
+    for (const itemId of ids) {
+      changed += stmt.run({ id: itemId, deleted_at: ts }).changes;
+    }
+    return changed > 0;
+  });
 
-  return result.changes > 0;
+  return run(id);
 }
 
 /**

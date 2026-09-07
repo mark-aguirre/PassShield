@@ -25,19 +25,23 @@ import { useEffect, useState } from 'react';
 import type {
   CategoryWithCount,
   ItemDetail as ItemDetailData,
+  ItemSummary,
   LoginPayload,
   NotePayload,
 } from '@passshield/contracts';
 import {
   Check,
+  ChevronRight,
   Copy,
   Download,
   Eye,
   EyeOff,
+  FileText,
   KeyRound,
   MoreHorizontal,
   Paperclip,
   Pencil,
+  Plus,
   SquareArrowOutUpRight,
   Star,
   X,
@@ -65,6 +69,21 @@ export interface ItemDetailProps {
   itemId: string | null;
   /** Invoked when the user chooses to edit the current item. */
   onEdit?: (id: string) => void;
+  /**
+   * Invoked to open another item in the detail pane, e.g. when a sub-page is
+   * clicked in the "Sub-pages" section.
+   */
+  onOpenItem?: (id: string) => void;
+  /**
+   * Invoked to create a new sub-page under the given parent id. When provided,
+   * a secure note shows an "Add sub-page" action and its list of sub-pages.
+   */
+  onAddSubPage?: (parentId: string) => void;
+  /**
+   * External change signal. Bumped by the parent after create/edit/trash so the
+   * sub-pages list re-fetches without unmounting the pane.
+   */
+  refreshToken?: number;
   /** Invoked when the user closes the detail pane (the `X` control). */
   onClose?: () => void;
 }
@@ -90,9 +109,18 @@ const GENERIC_ERROR_MESSAGE = 'Unable to load this item.';
 /**
  * Right-hand detail pane that displays a single decrypted vault item.
  */
-export function ItemDetail({ itemId, onEdit, onClose }: ItemDetailProps) {
+export function ItemDetail({
+  itemId,
+  onEdit,
+  onOpenItem,
+  onAddSubPage,
+  refreshToken,
+  onClose,
+}: ItemDetailProps) {
   const [load, setLoad] = useState<LoadState>({ status: 'idle' });
   const [passwordRevealed, setPasswordRevealed] = useState(false);
+  // Direct sub-pages of the current item (note items only). Metadata only.
+  const [children, setChildren] = useState<ItemSummary[]>([]);
   // Category id -> {name, color} so we can show the friendly name, not the id.
   const [categoriesById, setCategoriesById] = useState<
     Map<string, CategoryWithCount>
@@ -154,6 +182,34 @@ export function ItemDetail({ itemId, onEdit, onClose }: ItemDetailProps) {
       cancelled = true;
     };
   }, [itemId]);
+
+  // Load the current item's direct sub-pages. Re-fetches when the selected
+  // item changes or the parent signals a mutation via `refreshToken`. Failure
+  // is non-fatal: the section simply renders no children.
+  useEffect(() => {
+    if (itemId === null) {
+      setChildren([]);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const list = await window.passShield.items.listChildren(itemId);
+        if (!cancelled) {
+          setChildren(list);
+        }
+      } catch {
+        if (!cancelled) {
+          setChildren([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [itemId, refreshToken]);
 
   if (itemId === null || load.status === 'idle') {
     return <EmptyState />;
@@ -242,6 +298,15 @@ export function ItemDetail({ itemId, onEdit, onClose }: ItemDetailProps) {
           />
         ) : (
           <NoteFields payload={item.payload} category={resolvedCategory} />
+        )}
+
+        {item.itemType === 'note' && (
+          <SubPagesSection
+            parentId={item.id}
+            children={children}
+            onOpenItem={onOpenItem}
+            onAddSubPage={onAddSubPage}
+          />
         )}
       </div>
 
@@ -382,6 +447,72 @@ function NoteFields({
         </Field>
       )}
     </>
+  );
+}
+
+/**
+ * "Sub-pages" section shown on a secure note's detail view. Lists the note's
+ * direct child pages and offers an "Add sub-page" action. Selecting a sub-page
+ * opens it in the same detail pane, so users can navigate arbitrarily deep.
+ * _(Req 5.1)_
+ */
+function SubPagesSection({
+  parentId,
+  children,
+  onOpenItem,
+  onAddSubPage,
+}: {
+  parentId: string;
+  children: ItemSummary[];
+  onOpenItem?: (id: string) => void;
+  onAddSubPage?: (parentId: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">
+          Sub-pages{children.length > 0 ? ` (${children.length})` : ''}
+        </span>
+        {onAddSubPage && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onAddSubPage(parentId)}
+          >
+            <Plus className="size-3.5" />
+            Add sub-page
+          </Button>
+        )}
+      </div>
+
+      {children.length === 0 ? (
+        <p className="rounded-lg bg-muted/60 p-3 text-sm text-muted-foreground">
+          No sub-pages yet.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1" role="list">
+          {children.map((child) => (
+            <li key={child.id}>
+              <button
+                type="button"
+                onClick={() => onOpenItem?.(child.id)}
+                className="flex w-full items-center gap-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-left transition-colors hover:bg-accent"
+              >
+                <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                  {child.title}
+                </span>
+                {child.isFavorite && (
+                  <Star className="size-3.5 shrink-0 fill-amber-400 text-amber-400" />
+                )}
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

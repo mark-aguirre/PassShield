@@ -21,7 +21,7 @@
  * This doubles as the `encryption_version` recorded on the `vault` row so the
  * on-disk encryption/format version travels with the vault. (Req 13.2)
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /**
  * DDL for schema version 1. Executed as a single script inside a transaction
@@ -89,4 +89,30 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+`;
+
+/**
+ * DDL for schema version 2: sub-pages support.
+ *
+ * Adds a self-referencing `parent_id` to `vault_item` so an item can be a child
+ * ("sub-page") of another item. Top-level items keep `parent_id = NULL`, so
+ * every pre-existing row remains a top-level item after this migration — no
+ * data change is required for existing vaults.
+ *
+ * `ON DELETE CASCADE` means permanently deleting a parent removes its entire
+ * sub-tree (children, grandchildren, ...). Soft-delete (trash) is handled in
+ * the query layer, which cascades `deleted_at` to descendants so trashing a
+ * parent hides its sub-pages too. The relationship is arbitrary-depth; cycle
+ * prevention is enforced above the storage layer (in the vault service).
+ *
+ * SQLite's ALTER TABLE cannot add a column with a non-constant/foreign-key
+ * clause in every version, but it does accept a REFERENCES clause on ADD COLUMN
+ * for a nullable column with no default, which is what we use here.
+ */
+export const SCHEMA_V2 = /* sql */ `
+ALTER TABLE vault_item
+  ADD COLUMN parent_id TEXT REFERENCES vault_item(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_vault_item_parent
+  ON vault_item (parent_id);
 `;

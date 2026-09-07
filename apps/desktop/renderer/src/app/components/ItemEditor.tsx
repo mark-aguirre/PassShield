@@ -102,6 +102,12 @@ export interface ItemEditorProps {
    * in edit mode, where the fetched item's type is authoritative.
    */
   initialType?: ItemType;
+  /**
+   * The parent note id to attach a newly created item to, making it a
+   * sub-page. Only meaningful in create mode; in edit mode the item's own
+   * stored parent is authoritative. Defaults to `null` (a top-level item).
+   */
+  parentId?: string | null;
   /** Invoked with the saved item id after a successful create/update. */
   onSaved?: (id: string) => void;
   /** Invoked with the item id after it is moved to trash. */
@@ -151,6 +157,8 @@ interface FormState {
   title: string;
   categoryId: string | null;
   isFavorite: boolean;
+  /** Parent note id when this item is a sub-page, else null (top-level). */
+  parentId: string | null;
   // Login payload fields
   username: string;
   password: string;
@@ -163,12 +171,13 @@ interface FormState {
 }
 
 /** Builds a blank form for create mode. */
-function blankForm(itemType: ItemType): FormState {
+function blankForm(itemType: ItemType, parentId: string | null = null): FormState {
   return {
     itemType,
     title: '',
     categoryId: null,
     isFavorite: false,
+    parentId,
     username: '',
     password: '',
     website: '',
@@ -186,13 +195,14 @@ function blankForm(itemType: ItemType): FormState {
 export function ItemEditor({
   itemId,
   initialType = 'login',
+  parentId = null,
   onSaved,
   onTrashed,
   onClose,
 }: ItemEditorProps) {
   const isEditMode = typeof itemId === 'string' && itemId.length > 0;
 
-  const [form, setForm] = useState<FormState>(() => blankForm(initialType));
+  const [form, setForm] = useState<FormState>(() => blankForm(initialType, parentId));
   const [categories, setCategories] = useState<Category[]>([]);
   const [passwordRevealed, setPasswordRevealed] = useState(false);
   const [load, setLoad] = useState<LoadState>({ status: isEditMode ? 'loading' : 'ready' });
@@ -247,7 +257,7 @@ export function ItemEditor({
     setTitleTouched(false);
 
     if (!isEditMode || itemId == null) {
-      setForm(blankForm(initialType));
+      setForm(blankForm(initialType, parentId));
       setLoad({ status: 'ready' });
       return;
     }
@@ -270,7 +280,7 @@ export function ItemEditor({
         }
 
         const item = result.value;
-        const next = blankForm(item.itemType);
+        const next = blankForm(item.itemType, item.parentId);
         next.title = item.title;
         next.categoryId = item.categoryId;
         next.isFavorite = item.isFavorite;
@@ -297,7 +307,7 @@ export function ItemEditor({
     return () => {
       cancelled = true;
     };
-  }, [itemId, isEditMode, initialType]);
+  }, [itemId, isEditMode, initialType, parentId]);
 
   /** Patch helper for controlled form fields. */
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -315,6 +325,7 @@ export function ItemEditor({
       title: form.title.trim(),
       categoryId: form.categoryId,
       isFavorite: form.isFavorite,
+      parentId: form.parentId,
     };
 
     if (form.itemType === 'login') {

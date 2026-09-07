@@ -98,7 +98,7 @@ nsis:
 appx:
   identityName: "markaguirre.PassShield" # Package/Identity/Name from Partner Center
   publisher: "CN=343BE4E7-8E4D-410E-AE9F-8C5BABD03DC1" # Package/Identity/Publisher from Partner Center
-  publisherDisplayName: "markaguirre" # Package/Properties/PublisherDisplayName from Partner Center
+  publisherDisplayName: "virtualsoft" # Package/Properties/PublisherDisplayName from Partner Center
   # applicationId is the Applications/Application Id (an internal identifier, not
   # shown to users). It must be a valid identifier and stay stable across
   # updates. Casing here is normalized to the brand for consistency.
