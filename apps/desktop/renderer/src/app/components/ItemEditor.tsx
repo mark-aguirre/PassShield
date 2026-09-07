@@ -40,7 +40,7 @@
  * _(Req 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3, 20.1, 20.2, 20.3, 20.4)_
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   Category,
   CategoryWithCount,
@@ -53,6 +53,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  ImagePlus,
   KeyRound,
   RefreshCw,
   SquareArrowOutUpRight,
@@ -60,6 +61,8 @@ import {
   X,
 } from 'lucide-react';
 
+import { Markdown } from '@/app/components/Markdown';
+import { imageBlobToEmbeddable } from '@/lib/image';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -182,6 +185,15 @@ export function ItemEditor({
   const [trashing, setTrashing] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [titleTouched, setTitleTouched] = useState(false);
+  // Note editor: toggle between the raw markdown "Write" textarea and a
+  // rendered "Preview" of the same content.
+  const [notePreview, setNotePreview] = useState(false);
+  // Feedback while a pasted/selected image is being embedded, and any
+  // image-specific error (kept separate from the save-level formError).
+  const [embeddingImage, setEmbeddingImage] = useState(false);
+  const [noteImageError, setNoteImageError] = useState<string | null>(null);
+  const noteContentRef = useRef<HTMLTextAreaElement>(null);
+  const noteImageInputRef = useRef<HTMLInputElement>(null);
 
   const titleInvalid = form.title.trim().length === 0;
 
@@ -265,6 +277,84 @@ export function ItemEditor({
   /** Patch helper for controlled form fields. */
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  /**
+   * Insert a snippet into the note content at the current caret position (or
+   * replace the current selection), then restore the caret after the insert.
+   * Falls back to appending when the textarea ref is unavailable.
+   */
+  function insertIntoNote(snippet: string) {
+    const el = noteContentRef.current;
+    setForm((prev) => {
+      if (!el) {
+        const needsGap = prev.content.length > 0 && !prev.content.endsWith('\n');
+        return { ...prev, content: prev.content + (needsGap ? '\n' : '') + snippet };
+      }
+      const start = el.selectionStart ?? prev.content.length;
+      const end = el.selectionEnd ?? prev.content.length;
+      const next = prev.content.slice(0, start) + snippet + prev.content.slice(end);
+      // Restore the caret just past the inserted text on the next tick.
+      const caret = start + snippet.length;
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(caret, caret);
+      });
+      return { ...prev, content: next };
+    });
+  }
+
+  /**
+   * Turn an image blob into a size-bounded data URL and insert it as markdown
+   * image syntax on its own line. Surfaces a friendly error on failure.
+   */
+  async function embedImageBlob(blob: Blob, name?: string) {
+    setNoteImageError(null);
+    setEmbeddingImage(true);
+    try {
+      const result = await imageBlobToEmbeddable(blob, name ?? 'pasted-image');
+      if (!result.ok) {
+        setNoteImageError(result.error);
+        return;
+      }
+      // Ensure the image sits on its own line so it renders as a block figure.
+      insertIntoNote(`\n![${result.alt}](${result.dataUrl})\n`);
+      // Switching off preview keeps the caret usable right after inserting.
+      setNotePreview(false);
+    } catch {
+      setNoteImageError('Could not embed this image.');
+    } finally {
+      setEmbeddingImage(false);
+    }
+  }
+
+  /**
+   * Clipboard paste handler for the note textarea. If the clipboard carries an
+   * image, embed it and prevent the default (which would paste nothing useful).
+   * Plain-text pastes fall through to the browser's default behaviour.
+   */
+  function handleNotePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = Array.from(event.clipboardData?.items ?? []);
+    const imageItem = items.find((it) => it.kind === 'file' && it.type.startsWith('image/'));
+    if (!imageItem) {
+      return; // let normal text paste happen
+    }
+    const file = imageItem.getAsFile();
+    if (!file) {
+      return;
+    }
+    event.preventDefault();
+    void embedImageBlob(file, file.name);
+  }
+
+  /** Handle an image chosen through the hidden file input. */
+  function handleNoteImageFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    // Reset the input so selecting the same file again re-triggers change.
+    event.target.value = '';
+    if (file) {
+      void embedImageBlob(file, file.name);
+    }
   }
 
   /**
@@ -598,13 +688,78 @@ export function ItemEditor({
             </>
           ) : (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="note-content">Content</Label>
-              <Textarea
-                id="note-content"
-                rows={10}
-                value={form.content}
-                onChange={(event) => update('content', event.target.value)}
+              <div className="flex items-center justify-between">
+                <Label htmlFor="note-content">Content</Label>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => noteImageInputRef.current?.click()}
+                    disabled={embeddingImage}
+                  >
+                    <ImagePlus className="size-4" />
+                    {embeddingImage ? 'Adding…' : 'Add image'}
+                  </Button>
+                  <div
+                    className="ml-1 flex items-center gap-1"
+                    role="group"
+                    aria-label="Editor mode"
+                  >
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={notePreview ? 'ghost' : 'secondary'}
+                      aria-pressed={!notePreview}
+                      onClick={() => setNotePreview(false)}
+                    >
+                      Write
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={notePreview ? 'secondary' : 'ghost'}
+                      aria-pressed={notePreview}
+                      onClick={() => setNotePreview(true)}
+                      disabled={!form.content}
+                    >
+                      Preview
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              {notePreview ? (
+                <Markdown
+                  source={form.content}
+                  className="min-h-[236px] rounded-md border border-input bg-transparent p-3 text-sm leading-relaxed text-foreground"
+                />
+              ) : (
+                <Textarea
+                  id="note-content"
+                  ref={noteContentRef}
+                  rows={10}
+                  placeholder="Supports markdown, and you can paste an image directly here."
+                  value={form.content}
+                  onChange={(event) => update('content', event.target.value)}
+                  onPaste={handleNotePaste}
+                />
+              )}
+              <input
+                ref={noteImageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleNoteImageFile}
               />
+              {noteImageError ? (
+                <span role="alert" className="text-xs text-destructive">
+                  {noteImageError}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Markdown formatting is supported. Paste or add an image to embed it inline.
+                </span>
+              )}
             </div>
           )}
 

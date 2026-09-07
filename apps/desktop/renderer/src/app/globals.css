@@ -203,4 +203,28 @@
   textarea:disabled {
     cursor: not-allowed;
   }
+
+  /*
+   * Brand item icons (ItemIcon.tsx). The tile carries four CSS variables — a
+   * light-mode and dark-mode pair for both the tinted background and the logo
+   * fill — computed per brand in JS. These rules pick the right pair for the
+   * active theme, so a near-black brand logo (GitHub, Apple, X, ...) stays
+   * legible on the dark content surface, and the choice tracks live theme
+   * toggles without re-rendering React.
+   */
+  .item-brand-icon {
+    background-color: var(--brand-bg-light);
+  }
+
+  .item-brand-icon svg {
+    fill: var(--brand-fg-light);
+  }
+
+  .dark .item-brand-icon {
+    background-color: var(--brand-bg-dark);
+  }
+
+  .dark .item-brand-icon svg {
+    fill: var(--brand-fg-dark);
+  }
 }

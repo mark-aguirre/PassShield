@@ -25,6 +25,8 @@ import {
   KeyRound,
   LayoutGrid,
   Lock,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Star,
   type LucideIcon,
@@ -55,6 +57,14 @@ export interface SidebarProps {
    * "Categories" nav row can render as the current page.
    */
   isManagingCategories?: boolean;
+  /**
+   * When `true` the sidebar renders as a narrow icon-only rail: section
+   * headings, row labels, count badges, and footer captions are hidden and
+   * each row is reduced to its icon (with a native tooltip). _(Req 16.2)_
+   */
+  collapsed?: boolean;
+  /** Toggles the collapsed icon-rail state. Wired by the layout. */
+  onToggleCollapsed?: () => void;
 }
 
 /** The built-in scopes shown in the VAULT section, in mockup order. */
@@ -114,6 +124,8 @@ export function Sidebar({
   refreshToken = 0,
   onManageCategories,
   isManagingCategories = false,
+  collapsed = false,
+  onToggleCollapsed,
 }: SidebarProps) {
   const { selection, setSelection } = useVaultViewState();
 
@@ -187,11 +199,33 @@ export function Sidebar({
 
   return (
     <nav
-      className="flex h-full w-64 flex-col gap-5 overflow-y-auto bg-sidebar px-3 py-4 text-sidebar-foreground"
+      className={cn(
+        'flex h-full flex-col gap-5 overflow-y-auto bg-sidebar py-4 text-sidebar-foreground transition-[width] duration-200 ease-in-out',
+        collapsed ? 'w-16 px-2' : 'w-64 px-3',
+      )}
       aria-label="Vault navigation"
     >
+      {/* Collapse / expand toggle. Sits above the nav groups so it stays
+          reachable in both states. */}
+      <div className={cn('flex', collapsed ? 'justify-center' : 'justify-end')}>
+        <button
+          type="button"
+          onClick={() => onToggleCollapsed?.()}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-pressed={collapsed}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className="flex size-8 items-center justify-center rounded-lg text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-[18px]" />
+          ) : (
+            <PanelLeftClose className="size-[18px]" />
+          )}
+        </button>
+      </div>
+
       <div className="flex flex-col gap-1">
-        <SectionHeading>Vault</SectionHeading>
+        {!collapsed && <SectionHeading>Vault</SectionHeading>}
         <ul className="flex flex-col gap-0.5">
           {BUILTIN_SCOPES.map((scope) => {
             const Icon = SCOPE_ICONS[scope];
@@ -200,6 +234,7 @@ export function Sidebar({
               <li key={scope}>
                 <NavRow
                   active={active}
+                  collapsed={collapsed}
                   onClick={() => handleSelectScope({ scope, categoryId: null })}
                   icon={<Icon className="size-[18px]" />}
                   label={SCOPE_LABELS[scope]}
@@ -214,8 +249,10 @@ export function Sidebar({
               type="button"
               aria-current={isManagingCategories ? 'page' : undefined}
               onClick={() => onManageCategories?.()}
+              title={collapsed ? 'Categories' : undefined}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors',
+                'flex w-full items-center rounded-lg py-2 text-sm transition-colors',
+                collapsed ? 'justify-center px-0' : 'gap-3 px-2.5',
                 isManagingCategories
                   ? 'bg-primary text-primary-foreground font-medium'
                   : 'text-sidebar-foreground/90 hover:bg-sidebar-accent',
@@ -224,17 +261,21 @@ export function Sidebar({
               <span className="flex w-5 shrink-0 items-center justify-center">
                 <Folder className="size-[18px]" />
               </span>
-              <span className="flex-1 text-left">Categories</span>
-              <ChevronRight className="size-4 shrink-0 opacity-70" />
+              {!collapsed && (
+                <>
+                  <span className="flex-1 text-left">Categories</span>
+                  <ChevronRight className="size-4 shrink-0 opacity-70" />
+                </>
+              )}
             </button>
           </li>
         </ul>
       </div>
 
       <div className="flex flex-col gap-1">
-        <SectionHeading>Categories</SectionHeading>
+        {!collapsed && <SectionHeading>Categories</SectionHeading>}
         {categories.length === 0 ? (
-          <p className="px-2 text-xs text-sidebar-muted">No categories yet</p>
+          !collapsed && <p className="px-2 text-xs text-sidebar-muted">No categories yet</p>
         ) : (
           <ul className="flex flex-col gap-0.5">
             {categories.map((category) => {
@@ -244,6 +285,7 @@ export function Sidebar({
                 <li key={category.id}>
                   <NavRow
                     active={active}
+                    collapsed={collapsed}
                     onClick={() =>
                       handleSelectScope({ scope: 'category', categoryId: category.id })
                     }
@@ -266,7 +308,7 @@ export function Sidebar({
         )}
       </div>
 
-      <SidebarFooter autoLockMinutes={autoLockMinutes} />
+      <SidebarFooter autoLockMinutes={autoLockMinutes} collapsed={collapsed} />
     </nav>
   );
 }
@@ -289,36 +331,45 @@ function NavRow({
   icon,
   label,
   count,
+  collapsed = false,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
   count: number;
+  collapsed?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-current={active ? 'page' : undefined}
+      aria-label={collapsed ? `${label}, ${count} items` : undefined}
+      title={collapsed ? `${label} (${count})` : undefined}
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors',
+        'flex w-full items-center rounded-lg py-2 text-sm transition-colors',
+        collapsed ? 'justify-center px-0' : 'gap-3 px-2.5',
         active
           ? 'bg-primary text-primary-foreground font-medium'
           : 'text-sidebar-foreground/90 hover:bg-sidebar-accent',
       )}
     >
       <span className="flex w-5 shrink-0 items-center justify-center">{icon}</span>
-      <span className="flex-1 truncate text-left">{label}</span>
-      <span
-        className={cn(
-          'shrink-0 text-xs tabular-nums',
-          active ? 'text-primary-foreground/80' : 'text-sidebar-muted',
-        )}
-        aria-label={`${count} items`}
-      >
-        {count}
-      </span>
+      {!collapsed && (
+        <>
+          <span className="flex-1 truncate text-left">{label}</span>
+          <span
+            className={cn(
+              'shrink-0 text-xs tabular-nums',
+              active ? 'text-primary-foreground/80' : 'text-sidebar-muted',
+            )}
+            aria-label={`${count} items`}
+          >
+            {count}
+          </span>
+        </>
+      )}
     </button>
   );
 }
@@ -332,7 +383,13 @@ function NavRow({
  * from the configured interval and shows `00:00` on reaching zero rather than
  * assuming the vault has locked. _(Req 16.4)_
  */
-function SidebarFooter({ autoLockMinutes }: { autoLockMinutes: number | null }) {
+function SidebarFooter({
+  autoLockMinutes,
+  collapsed = false,
+}: {
+  autoLockMinutes: number | null;
+  collapsed?: boolean;
+}) {
   const totalSeconds = useMemo(
     () => (autoLockMinutes != null && autoLockMinutes > 0 ? autoLockMinutes * 60 : null),
     [autoLockMinutes],
@@ -355,6 +412,32 @@ function SidebarFooter({ autoLockMinutes }: { autoLockMinutes: number | null }) 
     }, 1000);
     return () => clearInterval(interval);
   }, [totalSeconds]);
+
+  const lockCaption =
+    remaining != null
+      ? `Vault Unlocked — auto-lock in ${formatCountdown(remaining)}`
+      : 'Vault Unlocked';
+
+  if (collapsed) {
+    return (
+      <div className="mt-auto flex flex-col items-center gap-2 pt-2">
+        <span
+          className="flex size-8 items-center justify-center rounded-lg bg-success/15 text-success"
+          title={lockCaption}
+          aria-label={lockCaption}
+        >
+          <Lock className="size-4" />
+        </span>
+        <span
+          className="flex size-8 items-center justify-center rounded-lg bg-success/15 text-success"
+          title="Synced — last sync: just now"
+          aria-label="Synced — last sync: just now"
+        >
+          <RefreshCw className="size-4" />
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-auto flex flex-col gap-2 pt-2">

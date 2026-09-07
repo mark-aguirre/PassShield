@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ItemType } from '@passshield/contracts';
+import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ItemEditor from '../ItemEditor';
 import SettingsView from '../SettingsView';
@@ -55,6 +56,38 @@ type EditorState =
  * a flood of mousemove/keydown events cheap. (Req 3.1)
  */
 const ACTIVITY_PING_INTERVAL_MS = 5_000;
+
+/** localStorage keys for persisting each panel's collapsed state. */
+const SIDEBAR_COLLAPSED_KEY = 'passshield.layout.sidebarCollapsed';
+const LIST_COLLAPSED_KEY = 'passshield.layout.listCollapsed';
+
+/**
+ * Reads a persisted boolean flag from localStorage, defaulting to `false` when
+ * unavailable (SSR / disabled storage) or unset. Kept tiny and synchronous so
+ * it can seed `useState` lazily without a flash of the wrong layout.
+ */
+function readPersistedFlag(key: string): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(key) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/** Persists a boolean flag, swallowing storage failures (e.g. private mode). */
+function writePersistedFlag(key: string, value: boolean): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(key, value ? 'true' : 'false');
+  } catch {
+    // Persistence is a convenience; ignore quota / access errors.
+  }
+}
 
 /** Props for {@link VaultLayout}. */
 export interface VaultLayoutProps {
@@ -137,6 +170,33 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
 
   // The settings overlay. Opened from the top bar's settings control. _(Req 14)_
   const [showSettings, setShowSettings] = useState(false);
+
+  // --- Collapsible panels --------------------------------------------------
+  // The left nav (icon rail) and the middle item-list pane can each be
+  // collapsed to reclaim horizontal space. Both states persist across
+  // sessions via localStorage. _(Req 16.2)_
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    readPersistedFlag(SIDEBAR_COLLAPSED_KEY),
+  );
+  const [listCollapsed, setListCollapsed] = useState(() =>
+    readPersistedFlag(LIST_COLLAPSED_KEY),
+  );
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      writePersistedFlag(SIDEBAR_COLLAPSED_KEY, next);
+      return next;
+    });
+  }, []);
+
+  const toggleListCollapsed = useCallback(() => {
+    setListCollapsed((prev) => {
+      const next = !prev;
+      writePersistedFlag(LIST_COLLAPSED_KEY, next);
+      return next;
+    });
+  }, []);
 
   const handleLock = useCallback(async () => {
     try {
@@ -252,6 +312,8 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
           <Sidebar
             refreshToken={refreshToken}
             isManagingCategories={manageCategories}
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={toggleSidebarCollapsed}
             onManageCategories={() => {
               setManageCategories(true);
               setSearchQuery('');
@@ -287,51 +349,79 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
               </section>
             ) : (
               <>
-                <section
-                  className="flex min-h-0 w-[380px] shrink-0 flex-col border-r border-border"
-                  aria-label="Item list"
-                >
-                  <div className="flex items-center justify-end gap-2 border-b border-border px-4 py-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowGenerator(true)}
-                    >
-                      Generate Password
-                    </Button>
-                  </div>
+                {!listCollapsed && (
+                  <section
+                    className="flex min-h-0 w-[380px] shrink-0 flex-col border-r border-border"
+                    aria-label="Item list"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleListCollapsed}
+                        aria-label="Collapse item list"
+                        title="Collapse item list"
+                      >
+                        <PanelRightOpen className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowGenerator(true)}
+                      >
+                        Generate Password
+                      </Button>
+                    </div>
 
-                  {isFavoritesScope ? (
-                    <FavoritesView selectedItemId={selectedItemId} onOpenItem={selectItem} />
-                  ) : (
-                    <ItemList
-                      scopeTitle={
-                        selection.scope === 'category'
-                          ? 'Category'
-                          : SCOPE_LABELS[selection.scope]
-                      }
-                      filter={{
-                        scope: selection.scope,
-                        categoryId: selection.categoryId ?? undefined,
-                      }}
-                      selectedItemId={selectedItemId}
-                      onSelectItem={(id) => selectItem(id)}
-                      onToggleFavorite={handleToggleFavorite}
-                      refreshToken={refreshToken}
-                    />
-                  )}
-                </section>
+                    {isFavoritesScope ? (
+                      <FavoritesView selectedItemId={selectedItemId} onOpenItem={selectItem} />
+                    ) : (
+                      <ItemList
+                        scopeTitle={
+                          selection.scope === 'category'
+                            ? 'Category'
+                            : SCOPE_LABELS[selection.scope]
+                        }
+                        filter={{
+                          scope: selection.scope,
+                          categoryId: selection.categoryId ?? undefined,
+                        }}
+                        selectedItemId={selectedItemId}
+                        onSelectItem={(id) => selectItem(id)}
+                        onToggleFavorite={handleToggleFavorite}
+                        refreshToken={refreshToken}
+                      />
+                    )}
+                  </section>
+                )}
 
                 <section
-                  className="min-h-0 min-w-0 flex-1 overflow-auto"
+                  className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
                   aria-label="Item detail"
                 >
-                  <ItemDetail
-                    itemId={selectedItemId}
-                    onEdit={handleEditItem}
-                    onClose={() => selectItem(null)}
-                  />
+                  {listCollapsed && (
+                    <div className="flex items-center gap-2 border-b border-border px-4 py-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleListCollapsed}
+                        aria-label="Show item list"
+                        title="Show item list"
+                      >
+                        <PanelRightClose className="size-4" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    <ItemDetail
+                      itemId={selectedItemId}
+                      onEdit={handleEditItem}
+                      onClose={() => selectItem(null)}
+                    />
+                  </div>
                 </section>
               </>
             )}

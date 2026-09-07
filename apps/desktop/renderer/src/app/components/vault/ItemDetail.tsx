@@ -41,6 +41,7 @@ import {
   X,
 } from 'lucide-react';
 
+import { Markdown } from '@/app/components/Markdown';
 import { ItemIcon } from '@/app/components/vault/ItemIcon';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -330,9 +331,16 @@ function NoteFields({
         <CategoryValue category={category} />
       </Field>
       <Field label="Note">
-        <div className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-          {payload.content || '—'}
-        </div>
+        {payload.content ? (
+          <Markdown
+            source={payload.content}
+            className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-foreground"
+          />
+        ) : (
+          <div className="rounded-lg bg-muted/60 p-3 text-sm leading-relaxed text-foreground">
+            —
+          </div>
+        )}
       </Field>
     </>
   );
