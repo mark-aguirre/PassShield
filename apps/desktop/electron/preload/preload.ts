@@ -55,6 +55,10 @@ const CHANNELS = {
     lock: 'vault:lock',
     status: 'vault:status',
     changeMasterPassword: 'vault:changeMasterPassword',
+    // Main→renderer push channel: emitted by the main process when the vault
+    // becomes locked (auto-lock timeout, manual lock, or exit). Delivered via
+    // ipcRenderer.on, not invoke. Keep in sync with main.ts. (Req 2.4, 3.2)
+    locked: 'vault:locked',
   },
   items: {
     list: 'items:list',
@@ -110,6 +114,17 @@ const passShieldApi: PassShieldApi = {
     status: (): Promise<VaultStatus> => ipcRenderer.invoke(CHANNELS.vault.status),
     changeMasterPassword: (input: ChangeMasterPasswordInput): Promise<Result> =>
       ipcRenderer.invoke(CHANNELS.vault.changeMasterPassword, input),
+    // Subscribe to main-process lock notifications. We wrap the raw IPC event
+    // so the renderer never receives the Electron `IpcRendererEvent` (which
+    // would leak `sender`/`ports`); the callback is invoked with no arguments.
+    // Returns an unsubscribe function that detaches the listener. (Req 2.4, 3.2)
+    onLocked: (callback: () => void): (() => void) => {
+      const listener = (): void => callback();
+      ipcRenderer.on(CHANNELS.vault.locked, listener);
+      return () => {
+        ipcRenderer.removeListener(CHANNELS.vault.locked, listener);
+      };
+    },
   },
 
   items: {

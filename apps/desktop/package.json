@@ -1,6 +1,6 @@
 {
   "name": "@passshield/desktop",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "description": "PassShield — a local-first desktop password manager.",
   "main": "dist/main/main.js",

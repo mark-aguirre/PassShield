@@ -227,4 +227,19 @@
   .dark .item-brand-icon svg {
     fill: var(--brand-fg-dark);
   }
+
+  /*
+   * Hide the scrollbar while keeping the element scrollable. Used by the
+   * sidebar rail so its overflow does not paint a visible scrollbar over the
+   * navy shell. Covers Firefox (`scrollbar-width`), legacy IE/Edge
+   * (`-ms-overflow-style`), and WebKit/Blink (`::-webkit-scrollbar`).
+   */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

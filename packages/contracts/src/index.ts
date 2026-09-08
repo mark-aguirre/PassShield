@@ -368,6 +368,14 @@ export interface PassShieldApi {
      * updates the stored verifier. _(Req 12)_
      */
     changeMasterPassword(input: ChangeMasterPasswordInput): Promise<Result>;
+    /**
+     * Subscribe to vault-lock notifications pushed by the main process. Fires
+     * whenever the vault becomes locked without an explicit renderer request —
+     * most importantly when the auto-lock inactivity timer elapses — so the UI
+     * can redirect to the unlock screen instead of showing a stale unlocked
+     * shell. Returns an unsubscribe function. _(Req 2.4, 3.2)_
+     */
+    onLocked(callback: () => void): () => void;
   };
 
   items: {

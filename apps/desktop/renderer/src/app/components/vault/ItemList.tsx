@@ -159,7 +159,7 @@ export function ItemList({
       ) : items.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">No items to show.</p>
       ) : (
-        <ul className="flex-1 space-y-1 overflow-y-auto px-2 pb-2" role="list">
+        <ul className="no-scrollbar flex-1 space-y-1 overflow-y-auto px-2 pb-2" role="list">
           {items.map((item) => {
             const isSelected = item.id === selectedItemId;
             return (

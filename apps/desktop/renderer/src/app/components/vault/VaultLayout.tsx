@@ -57,8 +57,7 @@ type EditorState =
  */
 const ACTIVITY_PING_INTERVAL_MS = 5_000;
 
-/** localStorage keys for persisting each panel's collapsed state. */
-const SIDEBAR_COLLAPSED_KEY = 'passshield.layout.sidebarCollapsed';
+/** localStorage key for persisting the item-list pane's collapsed state. */
 const LIST_COLLAPSED_KEY = 'passshield.layout.listCollapsed';
 
 /**
@@ -175,20 +174,9 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
   // The left nav (icon rail) and the middle item-list pane can each be
   // collapsed to reclaim horizontal space. Both states persist across
   // sessions via localStorage. _(Req 16.2)_
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
-    readPersistedFlag(SIDEBAR_COLLAPSED_KEY),
-  );
   const [listCollapsed, setListCollapsed] = useState(() =>
     readPersistedFlag(LIST_COLLAPSED_KEY),
   );
-
-  const toggleSidebarCollapsed = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      writePersistedFlag(SIDEBAR_COLLAPSED_KEY, next);
-      return next;
-    });
-  }, []);
 
   const toggleListCollapsed = useCallback(() => {
     setListCollapsed((prev) => {
@@ -318,8 +306,6 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
           <Sidebar
             refreshToken={refreshToken}
             isManagingCategories={manageCategories}
-            collapsed={sidebarCollapsed}
-            onToggleCollapsed={toggleSidebarCollapsed}
             onManageCategories={() => {
               setManageCategories(true);
               setSearchQuery('');

@@ -46,6 +46,18 @@ export default function HomePage() {
     void probe();
   }, [probe]);
 
+  // Redirect to the unlock screen when the main process reports the vault has
+  // locked on its own — chiefly when the auto-lock inactivity timer elapses.
+  // We only transition away from the unlocked shell; manual lock and app exit
+  // already drive their own navigation, so guarding on the current view keeps
+  // this from fighting those paths. _(Req 2.4, 3.2)_
+  useEffect(() => {
+    const unsubscribe = window.passShield.vault.onLocked(() => {
+      setView((current) => (current === 'unlocked' ? 'locked' : current));
+    });
+    return unsubscribe;
+  }, []);
+
   switch (view) {
     case 'loading':
       return <CenteredMessage title="passShield" detail="Loading your vault..." />;

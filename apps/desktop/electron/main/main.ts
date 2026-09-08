@@ -344,6 +344,14 @@ if (!gotSingleInstanceLock) {
         // already-locked vault, then clear the clipboard. (Req 3.2, 9.5)
         autoLockManager?.stop();
         clipboardService?.clearNow();
+        // Notify the renderer that the vault is now locked so it can redirect
+        // to the unlock screen. This fires on auto-lock (inactivity timeout),
+        // manual lock, and app exit; the renderer guards against redundant
+        // transitions. Guarded so we never send to a destroyed window during
+        // shutdown. (Req 2.4, 3.2)
+        if (mainWindow !== null && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('vault:locked');
+        }
       },
       // (Re)start the inactivity timer the moment the vault unlocks so the
       // countdown is anchored to unlock rather than app launch. (Req 3.1, 3.2)
