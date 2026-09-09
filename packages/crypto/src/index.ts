@@ -28,5 +28,12 @@ export { createVerifier, verify } from './verifier.js';
 
 export { decrypt, encrypt } from './aead.js';
 
+export {
+  generateRecoveryCode,
+  hashRecoveryCode,
+  verifyRecoveryCode,
+  type RecoveryCodeResult,
+} from './recovery-code.js';
+
 /** Marker for the crypto package version surface. */
 export const CRYPTO_PACKAGE_VERSION = '0.1.0';

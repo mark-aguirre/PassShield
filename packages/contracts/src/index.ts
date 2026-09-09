@@ -238,6 +238,56 @@ export interface ChangeMasterPasswordInput {
   confirmPassword: string;
 }
 
+// ---------------------------------------------------------------------------
+// Emergency kit (forgot-password recovery)
+// ---------------------------------------------------------------------------
+
+/**
+ * Result returned after the main process generates a new emergency kit.
+ *
+ * The `plainCode` is the raw recovery code shown to the user **exactly once**.
+ * It must be written down or printed and stored safely; it is never persisted
+ * and cannot be recovered from the application after this call. The main
+ * process stores only its hash. _(Forgot-password recovery)_
+ */
+export interface EmergencyKitResult {
+  /**
+   * The raw 32-hex-character (128-bit) recovery code, formatted as five groups
+   * of six characters separated by dashes for legibility, e.g.
+   * `ABCDEF-123456-GHIJKL-789012-MNOPQR`.
+   * Shown once; never persisted.
+   */
+  plainCode: string;
+}
+
+/**
+ * Status of the emergency kit — whether one has been generated for this vault.
+ * Returned by `vault.emergencyKitStatus` so the UI can show appropriate
+ * prompts (generate / regenerate).
+ */
+export interface EmergencyKitStatus {
+  /** True when an emergency code hash is stored in the vault row. */
+  hasKit: boolean;
+}
+
+/**
+ * Input for `vault.resetPasswordWithEmergencyKit`.
+ *
+ * Supplies the raw recovery code and the new master password (with
+ * confirmation). The main process verifies the code against the stored hash,
+ * then re-encrypts all vault items under a key derived from the new password —
+ * exactly like `changeMasterPassword` but authenticated by the recovery code
+ * rather than the current master password.
+ */
+export interface ResetPasswordWithKitInput {
+  /** The raw emergency recovery code the user copied from their kit. */
+  recoveryCode: string;
+  /** The new master password to set. */
+  newPassword: string;
+  /** Confirmation of the new master password; must match `newPassword`. */
+  confirmPassword: string;
+}
+
 /** Scope selector for `items.list`. */
 export type ItemScope = 'all' | 'favorites' | 'recent' | 'logins' | 'notes' | 'category';
 
@@ -368,6 +418,26 @@ export interface PassShieldApi {
      * updates the stored verifier. _(Req 12)_
      */
     changeMasterPassword(input: ChangeMasterPasswordInput): Promise<Result>;
+    /**
+     * Generate a new emergency recovery kit for the vault. Requires an
+     * unlocked vault. Returns the raw recovery code **once** — the caller must
+     * show it to the user immediately; it is never stored and cannot be
+     * retrieved again. The main process stores only its hash.
+     */
+    generateEmergencyKit(): Promise<Result<EmergencyKitResult>>;
+    /**
+     * Whether an emergency kit has been generated for this vault. Safe to call
+     * while the vault is locked (reads only the non-secret vault row).
+     */
+    emergencyKitStatus(): Promise<EmergencyKitStatus>;
+    /**
+     * Reset the master password using a previously generated emergency
+     * recovery code. Verifies the code, then re-encrypts the vault under a key
+     * derived from the new password. Can be called while the vault is locked
+     * (the recovery code is the authenticator). On success the vault is left
+     * unlocked.
+     */
+    resetPasswordWithEmergencyKit(input: ResetPasswordWithKitInput): Promise<Result>;
     /**
      * Subscribe to vault-lock notifications pushed by the main process. Fires
      * whenever the vault becomes locked without an explicit renderer request —

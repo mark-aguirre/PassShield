@@ -18,6 +18,11 @@ export interface UnlockScreenProps {
    * _(Req 2.2, 2.6)_
    */
   onUnlocked: () => void;
+  /**
+   * Invoked when the user clicks "Forgot master password?". The parent shell
+   * transitions to the recovery flow.
+   */
+  onForgotPassword?: () => void;
 }
 
 /** Generic, non-revealing message shown on any unlock failure. _(Req 2.3)_ */
@@ -32,7 +37,7 @@ const UNLOCK_ERROR_MESSAGE = 'Unable to unlock. Check your master password.';
  * message and reveals nothing about the vault or the reason for failure.
  * _(Req 2.1, 2.2, 2.3, 2.6)_
  */
-export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
+export function UnlockScreen({ onUnlocked, onForgotPassword }: UnlockScreenProps) {
   const passwordFieldId = useId();
   const errorMessageId = useId();
 
@@ -110,6 +115,18 @@ export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
             {isSubmitting ? 'Unlocking...' : 'Unlock'}
           </Button>
         </form>
+
+        {onForgotPassword && (
+          <div className="mt-5 flex justify-center">
+            <button
+              type="button"
+              onClick={onForgotPassword}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Forgot master password?
+            </button>
+          </div>
+        )}
       </section>
     </main>
   );

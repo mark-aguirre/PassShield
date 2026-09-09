@@ -28,6 +28,9 @@ import {
   Cloud,
   DatabaseBackup,
   Info,
+  CheckCheck,
+  Copy,
+  KeyRound,
   Settings as SettingsIcon,
   ShieldCheck,
   SlidersHorizontal,
@@ -41,7 +44,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { applyAppearance } from '@/lib/appearance';
 import { api } from '@/lib/api';
-import { useChangeMasterPassword, useAppVersion } from '@/hooks/useVault';
+import { useChangeMasterPassword, useAppVersion, useEmergencyKitStatus, useGenerateEmergencyKit } from '@/hooks/useVault';
 import { useSettings, useUpdateSettings } from '@/hooks/useSettings';
 import {
   Select,
@@ -559,6 +562,17 @@ function SecurityPane({ settings, onChange }: PaneProps) {
             </Row>
             <ChangeMasterPasswordForm />
           </Group>
+
+          <Group title="Emergency Kit">
+            <Row
+              icon={<KeyRound className="size-4" />}
+              label="Emergency recovery kit"
+              description="Generate a recovery code to reset your master password if you forget it."
+            >
+              <span className="text-xs text-muted-foreground">Manage below</span>
+            </Row>
+            <EmergencyKitPane />
+          </Group>
         </div>
 
         <aside
@@ -834,6 +848,123 @@ function AboutPane() {
           fully offline — no account or network connection required.
         </p>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Emergency Kit pane (Security section)
+// ---------------------------------------------------------------------------
+
+/**
+ * Emergency kit management panel embedded in the Security settings pane.
+ *
+ * Shows the kit status (generated / not generated), a generate / regenerate
+ * button, and — once the code has been generated in this session — a one-time
+ * display area with a copy button. The code is shown only once per generation
+ * and is never retrievable again.
+ */
+function EmergencyKitPane() {
+  const kitStatusQuery = useEmergencyKitStatus();
+  const generateMutation = useGenerateEmergencyKit();
+
+  // The plain code is stored locally only for the lifetime of this component
+  // after a successful generation. It is cleared if the component unmounts
+  // or the user navigates away.
+  const [plainCode, setPlainCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const hasKit = kitStatusQuery.data?.hasKit ?? false;
+  const isBusy = generateMutation.isPending;
+  const generateError = generateMutation.error?.message ?? null;
+
+  async function handleGenerate() {
+    if (isBusy) return;
+    setPlainCode(null);
+    setCopied(false);
+    generateMutation.reset();
+    try {
+      const result = await generateMutation.mutateAsync();
+      setPlainCode(result.plainCode);
+    } catch {
+      // Error surfaced via generateMutation.error above.
+    }
+  }
+
+  function handleCopy() {
+    if (!plainCode) return;
+    void navigator.clipboard.writeText(plainCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-3 px-3 pt-1 pb-4">
+      {/* Status indicator */}
+      <p className="text-xs text-muted-foreground">
+        {kitStatusQuery.isPending
+          ? 'Checking kit status…'
+          : hasKit
+            ? 'An emergency kit has been generated for this vault.'
+            : 'No emergency kit has been generated yet. Create one to enable password recovery.'}
+      </p>
+
+      {/* One-time code display — shown only immediately after generation */}
+      {plainCode && (
+        <div
+          className="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 p-4"
+          role="alert"
+          aria-live="polite"
+        >
+          <p className="text-xs font-semibold text-foreground">
+            Save this recovery code — it will not be shown again.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Write it down or print it and store it somewhere safe. You will need it to reset your
+            master password if you forget it.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded bg-muted px-3 py-2 font-mono text-sm tracking-widest text-foreground select-all">
+              {plainCode}
+            </code>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleCopy}
+              aria-label={copied ? 'Copied' : 'Copy recovery code'}
+              className="shrink-0"
+            >
+              {copied ? <CheckCheck className="size-4 text-success" /> : <Copy className="size-4" />}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {generateError && (
+        <p role="alert" className="text-xs text-destructive">
+          {generateError}
+        </p>
+      )}
+
+      <Button
+        type="button"
+        variant={hasKit ? 'outline' : 'default'}
+        size="sm"
+        onClick={handleGenerate}
+        disabled={isBusy}
+        className="self-start"
+      >
+        <KeyRound className="mr-2 size-4" />
+        {isBusy ? 'Generating…' : hasKit ? 'Regenerate Emergency Kit' : 'Generate Emergency Kit'}
+      </Button>
+
+      {hasKit && !plainCode && (
+        <p className="text-xs text-muted-foreground">
+          Regenerating replaces the existing kit. Your old code will stop working immediately.
+        </p>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@
  * (Req 1.4, 4.2, 5.2, 7.2, 13.2, 20.1, 21.1)
  */
 
-export { SCHEMA_V1, SCHEMA_V2, SCHEMA_VERSION } from './schema.js';
+export { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_VERSION } from './schema.js';
 
 export {
   getSchemaVersion,
@@ -80,6 +80,12 @@ export {
   setSetting,
   setSettings,
 } from './settings.js';
+
+export {
+  // Emergency recovery code hash (non-secret one-way hash only)
+  getEmergencyCodeHash,
+  setEmergencyCodeHash,
+} from './emergency-code.js';
 
 /** Marker for the database package version surface. */
 export const DATABASE_PACKAGE_VERSION = '0.1.0';

@@ -338,7 +338,7 @@ function SidebarFooter({ autoLockMinutes }: { autoLockMinutes: number | null }) 
         </span>
         <span className="text-[10px] leading-tight text-sidebar-muted">Unlocked</span>
       </div>
-      <div className="flex flex-col items-center gap-1">
+      {/* <div className="flex flex-col items-center gap-1">
         <span
           className="flex size-8 items-center justify-center rounded-lg bg-success/15 text-success"
           title="Synced — last sync: just now"
@@ -347,7 +347,7 @@ function SidebarFooter({ autoLockMinutes }: { autoLockMinutes: number | null }) 
           <RefreshCw className="size-4" />
         </span>
         <span className="text-[10px] leading-tight text-sidebar-muted">Synced</span>
-      </div>
+      </div> */}
     </div>
   );
 }

@@ -16,10 +16,11 @@
  * - `loading`     — initial probe of vault existence / lock status in flight.
  * - `onboarding`  — no vault exists; run the first-run create flow. _(Req 1.1)_
  * - `locked`      — a vault exists but is locked; show the unlock screen. _(Req 2.1)_
+ * - `recovery`    — user requested password recovery via emergency kit.
  * - `unlocked`    — the vault is unlocked; show the three-pane vault layout.
  * - `error`       — the initial probe failed (e.g. the bridge was unavailable).
  */
-export type AppView = 'loading' | 'onboarding' | 'locked' | 'unlocked' | 'error';
+export type AppView = 'loading' | 'onboarding' | 'locked' | 'recovery' | 'unlocked' | 'error';
 
 /**
  * Callback a screen invokes to hand control back to the shell after it changes

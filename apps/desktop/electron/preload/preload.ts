@@ -5,6 +5,8 @@ import type {
   CategoryWithCount,
   ChangeMasterPasswordInput,
   CreateVaultInput,
+  EmergencyKitResult,
+  EmergencyKitStatus,
   GeneratedPassword,
   GeneratorOptions,
   ItemDetail,
@@ -12,6 +14,7 @@ import type {
   ItemSort,
   ItemSummary,
   PassShieldApi,
+  ResetPasswordWithKitInput,
   Result,
   SaveCategoryInput,
   SaveItemInput,
@@ -55,6 +58,9 @@ const CHANNELS = {
     lock: 'vault:lock',
     status: 'vault:status',
     changeMasterPassword: 'vault:changeMasterPassword',
+    generateEmergencyKit: 'vault:generateEmergencyKit',
+    emergencyKitStatus: 'vault:emergencyKitStatus',
+    resetPasswordWithEmergencyKit: 'vault:resetPasswordWithEmergencyKit',
     // Main→renderer push channel: emitted by the main process when the vault
     // becomes locked (auto-lock timeout, manual lock, or exit). Delivered via
     // ipcRenderer.on, not invoke. Keep in sync with main.ts. (Req 2.4, 3.2)
@@ -114,6 +120,12 @@ const PassShieldApi: PassShieldApi = {
     status: (): Promise<VaultStatus> => ipcRenderer.invoke(CHANNELS.vault.status),
     changeMasterPassword: (input: ChangeMasterPasswordInput): Promise<Result> =>
       ipcRenderer.invoke(CHANNELS.vault.changeMasterPassword, input),
+    generateEmergencyKit: (): Promise<Result<EmergencyKitResult>> =>
+      ipcRenderer.invoke(CHANNELS.vault.generateEmergencyKit),
+    emergencyKitStatus: (): Promise<EmergencyKitStatus> =>
+      ipcRenderer.invoke(CHANNELS.vault.emergencyKitStatus),
+    resetPasswordWithEmergencyKit: (input: ResetPasswordWithKitInput): Promise<Result> =>
+      ipcRenderer.invoke(CHANNELS.vault.resetPasswordWithEmergencyKit, input),
     // Subscribe to main-process lock notifications. We wrap the raw IPC event
     // so the renderer never receives the Electron `IpcRendererEvent` (which
     // would leak `sender`/`ports`); the callback is invoked with no arguments.

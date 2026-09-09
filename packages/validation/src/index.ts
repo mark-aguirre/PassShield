@@ -108,6 +108,25 @@ export const changeMasterPasswordInputSchema = z.object({
 export type ChangeMasterPasswordInputParsed = z.infer<typeof changeMasterPasswordInputSchema>;
 
 // ---------------------------------------------------------------------------
+// vault.* — emergency kit
+// ---------------------------------------------------------------------------
+
+/**
+ * Input for `vault.resetPasswordWithEmergencyKit`.
+ *
+ * `recoveryCode` is the raw code the user transcribed from their printed kit
+ * (dashes and mixed case are accepted — normalisation happens in the crypto
+ * layer). `newPassword` and `confirmPassword` must be non-empty; the vault
+ * service enforces that they match before touching any key material.
+ */
+export const resetPasswordWithKitInputSchema = z.object({
+  recoveryCode: z.string().min(1),
+  newPassword: z.string().min(1),
+  confirmPassword: z.string().min(1),
+});
+export type ResetPasswordWithKitInputParsed = z.infer<typeof resetPasswordWithKitInputSchema>;
+
+// ---------------------------------------------------------------------------
 // items.*
 // ---------------------------------------------------------------------------
 
@@ -330,6 +349,7 @@ export const ipcInputSchemas = {
     create: createVaultInputSchema,
     unlock: unlockInputSchema,
     changeMasterPassword: changeMasterPasswordInputSchema,
+    resetPasswordWithKit: resetPasswordWithKitInputSchema,
   },
   items: {
     list: itemListFilterSchema,

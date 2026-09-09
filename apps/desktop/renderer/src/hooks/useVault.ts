@@ -32,7 +32,11 @@
 
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChangeMasterPasswordInput, CreateVaultInput } from '@PassShield/contracts';
+import type {
+  ChangeMasterPasswordInput,
+  CreateVaultInput,
+  ResetPasswordWithKitInput,
+} from '@PassShield/contracts';
 import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
@@ -133,6 +137,66 @@ export function useChangeMasterPassword() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: vaultKeys.status });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Emergency kit (forgot-password recovery)
+// ---------------------------------------------------------------------------
+
+export const emergencyKitKeys = {
+  status: ['vault', 'emergencyKit', 'status'] as const,
+};
+
+/**
+ * Whether an emergency recovery kit has been set up for the current vault.
+ * Safe to call while locked — the main process reads only the non-secret hash
+ * column.
+ */
+export function useEmergencyKitStatus() {
+  return useQuery({
+    queryKey: emergencyKitKeys.status,
+    queryFn: () => api.vault.emergencyKitStatus(),
+  });
+}
+
+/**
+ * Generate a new emergency recovery kit. Requires an unlocked vault.
+ * Returns `EmergencyKitResult.plainCode` once — the caller must display it
+ * immediately; it cannot be retrieved again. Invalidates the kit status query
+ * on success so the UI reflects that a kit now exists.
+ */
+export function useGenerateEmergencyKit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const result = await api.vault.generateEmergencyKit();
+      if (!result.ok) throw new Error(result.error.message);
+      return result.value; // { plainCode }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: emergencyKitKeys.status });
+    },
+  });
+}
+
+/**
+ * Reset the master password using a previously generated emergency recovery
+ * code. Verifies the code, re-encrypts the vault under the new password, and
+ * clears the kit hash so the same code cannot be reused.
+ * On success the vault transitions to unlocked; vault status is invalidated.
+ */
+export function useResetPasswordWithKit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ResetPasswordWithKitInput) => {
+      const result = await api.vault.resetPasswordWithEmergencyKit(input);
+      if (!result.ok) throw new Error(result.error.message);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: vaultKeys.status });
+      void queryClient.invalidateQueries({ queryKey: emergencyKitKeys.status });
     },
   });
 }

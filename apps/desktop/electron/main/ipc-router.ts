@@ -39,6 +39,8 @@ import type {
   GeneratedPassword,
   ItemDetail,
   ItemSummary,
+  EmergencyKitResult,
+  EmergencyKitStatus,
   Result,
   Settings,
   VaultStatus,
@@ -67,6 +69,9 @@ export const IpcChannels = {
     lock: 'vault:lock',
     status: 'vault:status',
     changeMasterPassword: 'vault:changeMasterPassword',
+    generateEmergencyKit: 'vault:generateEmergencyKit',
+    emergencyKitStatus: 'vault:emergencyKitStatus',
+    resetPasswordWithEmergencyKit: 'vault:resetPasswordWithEmergencyKit',
   },
   items: {
     list: 'items:list',
@@ -239,6 +244,34 @@ export function registerIpcRouter(
     }
     return vault.changeMasterPassword(parsed.data);
   });
+
+  // No input; returns EmergencyKitStatus {hasKit} — safe to call while locked.
+  handle(
+    IpcChannels.vault.emergencyKitStatus,
+    (): EmergencyKitStatus => vault.emergencyKitStatus(),
+  );
+
+  // No input; requires an unlocked vault. Returns the raw recovery code once —
+  // the renderer must display it immediately. The code is never re-derivable
+  // from the application after this call. (Forgot-password recovery)
+  handle(
+    IpcChannels.vault.generateEmergencyKit,
+    (): Result<EmergencyKitResult> => vault.generateEmergencyKit(),
+  );
+
+  // Validates the recovery code + new password, then re-encrypts the vault
+  // under the new password. The kit hash is cleared on success so the same
+  // code cannot be reused. (Forgot-password recovery)
+  handle(
+    IpcChannels.vault.resetPasswordWithEmergencyKit,
+    async (rawInput: unknown): Promise<Result> => {
+      const parsed = ipcInputSchemas.vault.resetPasswordWithKit.safeParse(rawInput);
+      if (!parsed.success) {
+        return validationError(parsed.error);
+      }
+      return vault.resetPasswordWithEmergencyKit(parsed.data);
+    },
+  );
 
   // -------------------------------------------------------------------------
   // items.*  (secret gating is enforced by the VaultService)

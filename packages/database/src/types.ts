@@ -23,6 +23,12 @@ export interface VaultRow {
   kdf_salt: string;
   /** Base64 verification material; contains no plaintext secret. (Req 12.2) */
   verifier: string;
+  /**
+   * HKDF-SHA-256 hash of the emergency recovery code (base64), or null when
+   * no kit has been generated. The raw code is never stored here.
+   * Added by schema migration v3. (Forgot-password recovery)
+   */
+  emergency_code_hash: string | null;
 }
 
 /** A row of the `vault_item` table. */

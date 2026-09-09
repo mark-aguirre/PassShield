@@ -21,7 +21,7 @@
  * This doubles as the `encryption_version` recorded on the `vault` row so the
  * on-disk encryption/format version travels with the vault. (Req 13.2)
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * DDL for schema version 1. Executed as a single script inside a transaction
@@ -115,4 +115,22 @@ ALTER TABLE vault_item
 
 CREATE INDEX IF NOT EXISTS idx_vault_item_parent
   ON vault_item (parent_id);
+`;
+
+/**
+ * DDL for schema version 3: emergency recovery kit.
+ *
+ * Adds an `emergency_code_hash` column to the `vault` row. This column stores
+ * the bcrypt-style HKDF-SHA-256 hash of a user-generated emergency recovery
+ * code. The raw code is shown to the user exactly once (at generation time) and
+ * is never persisted; only the hash lives here so a database breach cannot
+ * yield a working recovery code. When the column is NULL, no emergency kit has
+ * been generated and the recovery flow is unavailable.
+ *
+ * A plain `ALTER TABLE … ADD COLUMN` with a NULL default is backward-compatible
+ * with existing SQLite rows (every existing vault row gets NULL automatically).
+ */
+export const SCHEMA_V3 = /* sql */ `
+ALTER TABLE vault
+  ADD COLUMN emergency_code_hash TEXT;
 `;
