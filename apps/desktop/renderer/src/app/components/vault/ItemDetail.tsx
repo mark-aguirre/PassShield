@@ -3,27 +3,24 @@
 /**
  * Item detail pane (Screen 1, right pane) for the three-pane vault dashboard.
  *
- * Given a selected item id, this pane fetches the fully decrypted item through
- * the narrow `window.passShield.items.get` IPC surface and renders its fields.
- * It is the only place secret values surface, and only for the explicitly
- * selected item.
+ * Given a selected item id, this pane fetches the fully decrypted item via
+ * {@link useItemDetail} and renders its fields. It is the only place secret
+ * values surface, and only for the explicitly selected item.
  *
  * Security posture (Req 9):
  *   - Passwords render *concealed* (dots) by default; plaintext is shown only
  *     after an explicit user reveal action, and only for the current item.
  *     _(Req 9.1, 9.2)_
- *   - Copy actions route secret values through the main process
- *     (`clipboard.copySecret`) so the clear timer is enforced there, not in the
- *     renderer. _(Req 9.3, 9.4)_
- *   - When the id prop changes we re-fetch and reset the reveal toggle, so a
- *     revealed value never leaks across item selections.
+ *   - Copy actions route secret values through the main process via `api.*`
+ *     so the clear timer is enforced there, not in the renderer. _(Req 9.3, 9.4)_
+ *   - When the id prop changes we reset the reveal toggle, so a revealed value
+ *     never leaks across item selections.
  *
  * _(Req 9.1, 9.2)_
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type {
-  CategoryWithCount,
   ItemDetail as ItemDetailData,
   ItemSummary,
   LoginPayload,
@@ -54,12 +51,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { useCategories } from '@/hooks/useCategories';
+import { useItemChildren, useItemDetail } from '@/hooks/useItems';
 
 /**
  * A category resolved to its display fields. The item record only stores a
  * `categoryId`; this pane resolves it to the human-readable name (and color)
- * via the category list so it never surfaces a raw id. `null` means the item
- * is uncategorized or its category could not be resolved.
+ * via the category list so it never surfaces a raw id.
  */
 type ResolvedCategory = { name: string; color: string | null } | null;
 
@@ -79,21 +78,9 @@ export interface ItemDetailProps {
    * a secure note shows an "Add sub-page" action and its list of sub-pages.
    */
   onAddSubPage?: (parentId: string) => void;
-  /**
-   * External change signal. Bumped by the parent after create/edit/trash so the
-   * sub-pages list re-fetches without unmounting the pane.
-   */
-  refreshToken?: number;
   /** Invoked when the user closes the detail pane (the `X` control). */
   onClose?: () => void;
 }
-
-/** Transient load state for the fetched item detail. */
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; item: ItemDetailData };
 
 /** Concealed rendering used for password fields before an explicit reveal. */
 const CONCEALED_PASSWORD = '•'.repeat(12);
@@ -114,108 +101,29 @@ export function ItemDetail({
   onEdit,
   onOpenItem,
   onAddSubPage,
-  refreshToken,
   onClose,
 }: ItemDetailProps) {
-  const [load, setLoad] = useState<LoadState>({ status: 'idle' });
   const [passwordRevealed, setPasswordRevealed] = useState(false);
-  // Direct sub-pages of the current item (note items only). Metadata only.
-  const [children, setChildren] = useState<ItemSummary[]>([]);
-  // Category id -> {name, color} so we can show the friendly name, not the id.
-  const [categoriesById, setCategoriesById] = useState<
-    Map<string, CategoryWithCount>
-  >(new Map());
 
-  // Load the category list once so a stored categoryId can be resolved to its
-  // display name and color. Non-critical: failure just falls back to showing
-  // "Uncategorized". _(Req 7.x)_
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await window.passShield.categories.list();
-        if (!cancelled) {
-          setCategoriesById(new Map(list.map((category) => [category.id, category])));
-        }
-      } catch {
-        // Leave the map empty; categories render as "Uncategorized".
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const detailQuery = useItemDetail(itemId);
+  const childrenQuery = useItemChildren(itemId);
+  const { data: categories = [] } = useCategories();
 
-  useEffect(() => {
+  // Reset the reveal toggle whenever the selected item changes.
+  const item = detailQuery.data;
+  const prevItemId = item?.id;
+  if (prevItemId !== undefined && prevItemId !== itemId) {
     setPasswordRevealed(false);
+  }
 
-    if (itemId === null) {
-      setLoad({ status: 'idle' });
-      return;
-    }
+  const categoriesById = new Map(categories.map((c) => [c.id, c]));
+  const children: ItemSummary[] = childrenQuery.data ?? [];
 
-    let cancelled = false;
-    setLoad({ status: 'loading' });
-
-    (async () => {
-      try {
-        const result = await window.passShield.items.get(itemId);
-        if (cancelled) {
-          return;
-        }
-        if (result.ok) {
-          setLoad({ status: 'ready', item: result.value });
-        } else {
-          setLoad({
-            status: 'error',
-            message: ERROR_MESSAGES[result.error.code] ?? GENERIC_ERROR_MESSAGE,
-          });
-        }
-      } catch {
-        if (!cancelled) {
-          setLoad({ status: 'error', message: GENERIC_ERROR_MESSAGE });
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [itemId]);
-
-  // Load the current item's direct sub-pages. Re-fetches when the selected
-  // item changes or the parent signals a mutation via `refreshToken`. Failure
-  // is non-fatal: the section simply renders no children.
-  useEffect(() => {
-    if (itemId === null) {
-      setChildren([]);
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await window.passShield.items.listChildren(itemId);
-        if (!cancelled) {
-          setChildren(list);
-        }
-      } catch {
-        if (!cancelled) {
-          setChildren([]);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [itemId, refreshToken]);
-
-  if (itemId === null || load.status === 'idle') {
+  if (itemId === null) {
     return <EmptyState />;
   }
 
-  if (load.status === 'loading') {
+  if (detailQuery.isPending) {
     return (
       <section className="flex h-full items-center justify-center p-8" aria-busy="true">
         <p className="text-sm text-muted-foreground">Loading...</p>
@@ -223,7 +131,11 @@ export function ItemDetail({
     );
   }
 
-  if (load.status === 'error') {
+  if (detailQuery.isError) {
+    const errorMsg =
+      detailQuery.error instanceof Error
+        ? (ERROR_MESSAGES[detailQuery.error.message] ?? GENERIC_ERROR_MESSAGE)
+        : GENERIC_ERROR_MESSAGE;
     return (
       <section className="flex h-full flex-col gap-4 p-6">
         <div className="flex items-center justify-between">
@@ -231,13 +143,14 @@ export function ItemDetail({
           <CloseButton onClose={onClose} />
         </div>
         <p role="alert" className="text-sm text-destructive">
-          {load.message}
+          {errorMsg}
         </p>
       </section>
     );
   }
 
-  const { item } = load;
+  if (!item) return <EmptyState />;
+
   // Resolve the stored category id to its display name + color.
   const resolvedCategory: ResolvedCategory = item.categoryId
     ? (() => {
@@ -451,10 +364,7 @@ function NoteFields({
 }
 
 /**
- * "Sub-pages" section shown on a secure note's detail view. Lists the note's
- * direct child pages and offers an "Add sub-page" action. Selecting a sub-page
- * opens it in the same detail pane, so users can navigate arbitrarily deep.
- * _(Req 5.1)_
+ * "Sub-pages" section shown on a secure note's detail view. _(Req 5.1)_
  */
 function SubPagesSection({
   parentId,
@@ -517,9 +427,7 @@ function SubPagesSection({
 }
 
 /**
- * Renders a resolved category as a colored badge, or an "Uncategorized"
- * placeholder. When the category carries a color, the badge is tinted with it;
- * otherwise it falls back to the default primary-tinted badge.
+ * Renders a resolved category as a colored badge, or an "Uncategorized" placeholder.
  */
 function CategoryValue({ category }: { category: ResolvedCategory }) {
   if (!category) {
@@ -530,7 +438,7 @@ function CategoryValue({ category }: { category: ResolvedCategory }) {
       <span
         className="inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
         style={{
-          backgroundColor: `${category.color}1a`, // ~10% alpha tint
+          backgroundColor: `${category.color}1a`,
           color: category.color,
         }}
       >
@@ -557,15 +465,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /**
- * Copies a secret value through the main-process clipboard handler, which owns
- * the clipboard-clear timer. Shows a brief acknowledgement. _(Req 9.3, 9.4)_
+ * Copies a secret value through the main-process clipboard handler via `api.*`,
+ * which owns the clipboard-clear timer. Shows a brief acknowledgement. _(Req 9.3, 9.4)_
  */
 function CopyButton({ label, value }: { label: string; value: string }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
-      await window.passShield.clipboard.copySecret(value);
+      await api.clipboard.copySecret(value);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -611,8 +519,7 @@ function IconToggle({
 }
 
 /**
- * Renders a website as a link plus an explicit open-external action, routed to
- * the OS browser through the main-process window-open handler.
+ * Renders a website as a link plus an explicit open-external action.
  */
 function WebsiteLink({ url }: { url: string }) {
   function openExternal() {

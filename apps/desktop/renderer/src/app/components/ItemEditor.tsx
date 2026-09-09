@@ -42,8 +42,6 @@
 
 import { useEffect, useState } from 'react';
 import type {
-  Category,
-  CategoryWithCount,
   GeneratorOptions,
   ItemType,
   NoteAttachment,
@@ -74,6 +72,10 @@ import {
 import { Markdown } from '@/app/components/Markdown';
 import { useNoteComposer } from '@/app/hooks/useNoteComposer';
 import { formatBytes } from '@/lib/attachment';
+import { api } from '@/lib/api';
+import { useCategories } from '@/hooks/useCategories';
+import { useItemDetail } from '@/hooks/useItems';
+import { useSaveItem, useTrashItem } from '@/hooks/useItems';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -140,12 +142,6 @@ const ERROR_MESSAGES: Record<string, string> = {
 /** Fallback message for any other or unexpected failure. */
 const GENERIC_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
-/** Transient load state for prefilling an existing item in edit mode. */
-type LoadState =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'ready' };
 
 /**
  * The editable form model. Both item types share the metadata fields; the
@@ -203,13 +199,82 @@ export function ItemEditor({
   const isEditMode = typeof itemId === 'string' && itemId.length > 0;
 
   const [form, setForm] = useState<FormState>(() => blankForm(initialType, parentId));
-  const [categories, setCategories] = useState<Category[]>([]);
   const [passwordRevealed, setPasswordRevealed] = useState(false);
-  const [load, setLoad] = useState<LoadState>({ status: isEditMode ? 'loading' : 'ready' });
-  const [saving, setSaving] = useState(false);
-  const [trashing, setTrashing] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [titleTouched, setTitleTouched] = useState(false);
+  // Track whether we've already seeded the form from the fetched item so we
+  // only populate once per itemId (not on every re-render after initial load).
+  const [seededId, setSeededId] = useState<string | null>(null);
+
+  // Category list for the dropdown. Non-critical — dropdown shows none on failure.
+  const { data: categories = [] } = useCategories();
+
+  // Mutations
+  const saveItemMutation = useSaveItem();
+  const trashItemMutation = useTrashItem();
+
+  const saving = saveItemMutation.isPending;
+  const trashing = trashItemMutation.isPending;
+
+  // In edit mode, fetch the decrypted item via TanStack Query so the result is
+  // cached and shared. The query is disabled when itemId is null/undefined.
+  const itemDetailQuery = useItemDetail(isEditMode ? itemId! : null);
+
+  // Derive a load state from the query so the render logic below stays the
+  // same shape it had before.
+  type LoadState =
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'error'; message: string }
+    | { status: 'ready' };
+
+  let load: LoadState;
+  if (!isEditMode) {
+    load = { status: 'ready' };
+  } else if (itemDetailQuery.isPending) {
+    load = { status: 'loading' };
+  } else if (itemDetailQuery.isError) {
+    const msg = itemDetailQuery.error instanceof Error
+      ? itemDetailQuery.error.message
+      : GENERIC_ERROR_MESSAGE;
+    load = { status: 'error', message: ERROR_MESSAGES[msg] ?? GENERIC_ERROR_MESSAGE };
+  } else {
+    load = { status: 'ready' };
+  }
+
+  // Seed the form once when the item detail arrives (or when itemId changes).
+  useEffect(() => {
+    setPasswordRevealed(false);
+    setFormError(null);
+    setTitleTouched(false);
+
+    if (!isEditMode || itemId == null) {
+      setForm(blankForm(initialType, parentId));
+      setSeededId(null);
+      return;
+    }
+
+    // Only seed when we have fresh data and haven't seeded for this itemId yet.
+    if (itemDetailQuery.data && seededId !== itemId) {
+      const item = itemDetailQuery.data;
+      const next = blankForm(item.itemType, item.parentId);
+      next.title = item.title;
+      next.categoryId = item.categoryId;
+      next.isFavorite = item.isFavorite;
+      if (item.itemType === 'login') {
+        next.username = item.payload.username;
+        next.password = item.payload.password;
+        next.website = item.payload.website;
+        next.loginNotes = item.payload.notes;
+      } else {
+        next.content = item.payload.content;
+        next.subject = item.payload.subject ?? '';
+        next.attachments = item.payload.attachments ?? [];
+      }
+      setForm(next);
+      setSeededId(itemId);
+    }
+  }, [itemId, isEditMode, initialType, parentId, itemDetailQuery.data, seededId]);
 
   // Note composition (inline images, file attachments, and the Write/Preview
   // toggle) is a self-contained concern owned by this hook. It writes note
@@ -228,86 +293,6 @@ export function ItemEditor({
   });
 
   const titleInvalid = form.title.trim().length === 0;
-
-  // Load the category list once so the dropdown can offer assignments.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const list: CategoryWithCount[] = await window.passShield.categories.list();
-        if (!cancelled) {
-          setCategories(list);
-        }
-      } catch {
-        // A missing category list is non-fatal; the dropdown just shows none.
-        if (!cancelled) {
-          setCategories([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // In edit mode, fetch the decrypted item and prefill the form.
-  useEffect(() => {
-    setPasswordRevealed(false);
-    setFormError(null);
-    setTitleTouched(false);
-
-    if (!isEditMode || itemId == null) {
-      setForm(blankForm(initialType, parentId));
-      setLoad({ status: 'ready' });
-      return;
-    }
-
-    let cancelled = false;
-    setLoad({ status: 'loading' });
-
-    (async () => {
-      try {
-        const result = await window.passShield.items.get(itemId);
-        if (cancelled) {
-          return;
-        }
-        if (!result.ok) {
-          setLoad({
-            status: 'error',
-            message: ERROR_MESSAGES[result.error.code] ?? GENERIC_ERROR_MESSAGE,
-          });
-          return;
-        }
-
-        const item = result.value;
-        const next = blankForm(item.itemType, item.parentId);
-        next.title = item.title;
-        next.categoryId = item.categoryId;
-        next.isFavorite = item.isFavorite;
-        if (item.itemType === 'login') {
-          next.username = item.payload.username;
-          next.password = item.payload.password;
-          next.website = item.payload.website;
-          next.loginNotes = item.payload.notes;
-        } else {
-          next.content = item.payload.content;
-          // Legacy notes carry only `content`; default the newer fields.
-          next.subject = item.payload.subject ?? '';
-          next.attachments = item.payload.attachments ?? [];
-        }
-        setForm(next);
-        setLoad({ status: 'ready' });
-      } catch {
-        if (!cancelled) {
-          setLoad({ status: 'error', message: GENERIC_ERROR_MESSAGE });
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [itemId, isEditMode, initialType, parentId]);
 
   /** Patch helper for controlled form fields. */
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -354,7 +339,7 @@ export function ItemEditor({
     };
   }
 
-  /** Validate, then persist via `items.save`. Closes only on success. */
+  /** Validate, then persist via the saveItem mutation. Closes only on success. */
   async function handleSave() {
     setTitleTouched(true);
     if (titleInvalid) {
@@ -362,49 +347,35 @@ export function ItemEditor({
       return;
     }
 
-    setSaving(true);
     setFormError(null);
     try {
-      const result = await window.passShield.items.save(buildSaveInput());
-      if (result.ok) {
-        onSaved?.(result.value.id);
-      } else {
-        // On failure (e.g. `locked`) surface the message and do NOT close.
-        setFormError(ERROR_MESSAGES[result.error.code] ?? result.error.message ?? GENERIC_ERROR_MESSAGE);
-      }
-    } catch {
-      setFormError(GENERIC_ERROR_MESSAGE);
-    } finally {
-      setSaving(false);
+      const saved = await saveItemMutation.mutateAsync(buildSaveInput());
+      onSaved?.(saved.id);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : GENERIC_ERROR_MESSAGE;
+      setFormError(ERROR_MESSAGES[msg] ?? msg);
     }
   }
 
   /** Soft-delete the current item (edit mode only), then notify the parent. */
   async function handleTrash() {
-    if (!isEditMode || itemId == null) {
-      return;
-    }
-    setTrashing(true);
+    if (!isEditMode || itemId == null) return;
+
     setFormError(null);
     try {
-      const result = await window.passShield.items.trash(itemId);
-      if (result.ok) {
-        onTrashed?.(itemId);
-        onClose?.();
-      } else {
-        setFormError(ERROR_MESSAGES[result.error.code] ?? result.error.message ?? GENERIC_ERROR_MESSAGE);
-      }
-    } catch {
-      setFormError(GENERIC_ERROR_MESSAGE);
-    } finally {
-      setTrashing(false);
+      await trashItemMutation.mutateAsync(itemId);
+      onTrashed?.(itemId);
+      onClose?.();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : GENERIC_ERROR_MESSAGE;
+      setFormError(ERROR_MESSAGES[msg] ?? msg);
     }
   }
 
   /** Generate a password with the default options and put it in the field. */
   async function handleGeneratePassword() {
     try {
-      const result = await window.passShield.generator.generate(DEFAULT_GENERATOR_OPTIONS);
+      const result = await api.generator.generate(DEFAULT_GENERATOR_OPTIONS);
       if (result.ok) {
         update('password', result.value.value);
         setPasswordRevealed(true);
@@ -418,11 +389,9 @@ export function ItemEditor({
 
   /** Copy the current password through the main-process clipboard handler. */
   async function handleCopyPassword() {
-    if (!form.password) {
-      return;
-    }
+    if (!form.password) return;
     try {
-      await window.passShield.clipboard.copySecret(form.password);
+      await api.clipboard.copySecret(form.password);
     } catch {
       // A failed copy is non-fatal.
     }
@@ -1017,23 +986,16 @@ export default ItemEditor;
  */
 export async function restoreItem(id: string): Promise<boolean> {
   try {
-    const result = await window.passShield.items.restore(id);
+    const result = await api.items.restore(id);
     return result.ok;
   } catch {
     return false;
   }
 }
 
-/**
- * Permanently delete a trashed item from storage. This is the `items.delete`
- * IPC path (Req 20.3). Like {@link restoreItem}, it is exported for a future
- * Trash view; permanent deletion is intentionally not offered from the editor.
- *
- * Returns `true` on success, `false` on any failure (e.g. the vault is locked).
- */
 export async function permanentlyDeleteItem(id: string): Promise<boolean> {
   try {
-    const result = await window.passShield.items.delete(id);
+    const result = await api.items.delete(id);
     return result.ok;
   } catch {
     return false;

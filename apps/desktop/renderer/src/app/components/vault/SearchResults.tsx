@@ -1,12 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type {
-  CategoryWithCount,
-  ItemSort,
-  ItemSummary,
-  ItemType,
-} from '@passshield/contracts';
+import { useMemo, useState } from 'react';
+import type { ItemSort, ItemType } from '@passshield/contracts';
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,6 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useCategories } from '@/hooks/useCategories';
+import { useItemList, useItemSearch } from '@/hooks/useItems';
 
 /** Props for {@link SearchResults}. */
 export interface SearchResultsProps {
@@ -68,65 +65,30 @@ function formatUpdated(iso: string): string {
  * control, list/grid toggle), category filter chips, and a paginated,
  * metadata-only set of results.
  *
- * Results are fetched through the narrow `window.passShield.items.search` IPC
- * surface. An empty query falls back to `items.list()` so clearing the query
- * restores the full list. _(Req 6.1, 6.2, 6.3, 6.4, 17.2, 17.3, 17.4)_
+ * Results are fetched via {@link useItemSearch} (non-empty query) or
+ * {@link useItemList} (empty query). Categories come from {@link useCategories}.
+ * _(Req 6.1, 6.2, 6.3, 6.4, 17.2, 17.3, 17.4)_
  */
 export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
   const [sort, setSort] = useState<ItemSort>('relevance');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [results, setResults] = useState<ItemSummary[]>([]);
-  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const trimmedQuery = query.trim();
   const isEmptyQuery = trimmedQuery.length === 0;
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const list = await window.passShield.categories.list();
-        if (!cancelled) {
-          setCategories(list);
-        }
-      } catch {
-        if (!cancelled) {
-          setCategories([]);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Categories (for filter chips and badge labels).
+  const { data: categories = [] } = useCategories();
 
-  const loadResults = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const summaries = isEmptyQuery
-        ? await window.passShield.items.list(undefined, sort)
-        : await window.passShield.items.search(trimmedQuery, sort);
-      setResults(summaries);
-    } catch {
-      setResults([]);
-      setError('Unable to load search results.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [isEmptyQuery, trimmedQuery, sort]);
+  // Results: search when we have a query, fall back to full list when empty.
+  const searchQuery = useItemSearch(trimmedQuery, sort);
+  const listQuery = useItemList(undefined, sort === 'relevance' ? 'titleAsc' : sort);
 
-  useEffect(() => {
-    void loadResults();
-  }, [loadResults]);
-
-  useEffect(() => {
-    setPage(0);
-  }, [trimmedQuery, sort, activeCategoryId, results.length]);
+  const activeQuery = isEmptyQuery ? listQuery : searchQuery;
+  const allResults = activeQuery.data ?? [];
+  const isLoading = activeQuery.isPending;
+  const isError = activeQuery.isError;
 
   const categoryNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -137,11 +99,9 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
   }, [categories]);
 
   const filteredResults = useMemo(() => {
-    if (activeCategoryId === null) {
-      return results;
-    }
-    return results.filter((item) => item.categoryId === activeCategoryId);
-  }, [results, activeCategoryId]);
+    if (activeCategoryId === null) return allResults;
+    return allResults.filter((item) => item.categoryId === activeCategoryId);
+  }, [allResults, activeCategoryId]);
 
   const total = filteredResults.length;
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -152,20 +112,19 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
 
   const resultLabel = isEmptyQuery
     ? `${total} items in your vault`
-    : `${total} items found for “${trimmedQuery}”`;
+    : `${total} items found for "${trimmedQuery}"`;
 
-  function categoryBadge(item: ItemSummary) {
-    if (item.categoryId === null) {
-      return null;
-    }
+  // Reset to page 0 whenever the query, sort, or category filter changes.
+  const stableKey = `${trimmedQuery}|${sort}|${activeCategoryId ?? ''}`;
+
+  function categoryBadge(item: (typeof allResults)[number]) {
+    if (item.categoryId === null) return null;
     const name = categoryNameById.get(item.categoryId);
-    if (name === undefined) {
-      return null;
-    }
+    if (name === undefined) return null;
     return <Badge>{name}</Badge>;
   }
 
-  function renderResultRow(item: ItemSummary) {
+  function renderResultRow(item: (typeof allResults)[number]) {
     return (
       <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
         <ItemIcon title={item.title} itemType={item.itemType} className="size-11" glyphSize={20} />
@@ -180,14 +139,20 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
           <span>Updated</span>
           <span>{formatUpdated(item.updatedAt)}</span>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => onOpenItem(item.id)} aria-label={`Open ${item.title}`}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onOpenItem(item.id)}
+          aria-label={`Open ${item.title}`}
+        >
           Open
         </Button>
       </div>
     );
   }
 
-  function renderResultCard(item: ItemSummary) {
+  function renderResultCard(item: (typeof allResults)[number]) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40">
         <div className="flex items-center gap-3">
@@ -201,8 +166,16 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
         </div>
         {categoryBadge(item)}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Updated {formatUpdated(item.updatedAt)}</span>
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenItem(item.id)} aria-label={`Open ${item.title}`}>
+          <span className="text-xs text-muted-foreground">
+            Updated {formatUpdated(item.updatedAt)}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenItem(item.id)}
+            aria-label={`Open ${item.title}`}
+          >
             Open
           </Button>
         </div>
@@ -211,7 +184,12 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
   }
 
   return (
-    <section className="flex h-full min-w-0 flex-col bg-background" aria-label="Search results">
+    <section
+      className="flex h-full min-w-0 flex-col bg-background"
+      aria-label="Search results"
+      // key forces a page reset when the filter params change
+      key={stableKey}
+    >
       <header className="flex flex-wrap items-start justify-between gap-3 p-6 pb-4">
         <div className="flex flex-col">
           <h2 className="text-2xl font-bold text-foreground">Search Results</h2>
@@ -237,13 +215,22 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
             <ListFilter className="size-4" />
           </Button>
 
-          <div className="flex overflow-hidden rounded-md border border-border" role="group" aria-label="View mode">
+          <div
+            className="flex overflow-hidden rounded-md border border-border"
+            role="group"
+            aria-label="View mode"
+          >
             <button
               type="button"
               onClick={() => setViewMode('list')}
               aria-pressed={viewMode === 'list'}
               title="List view"
-              className={cn('flex size-8 items-center justify-center', viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent')}
+              className={cn(
+                'flex size-8 items-center justify-center',
+                viewMode === 'list'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent',
+              )}
             >
               <List className="size-4" />
             </button>
@@ -252,7 +239,12 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
               onClick={() => setViewMode('grid')}
               aria-pressed={viewMode === 'grid'}
               title="Grid view"
-              className={cn('flex size-8 items-center justify-center', viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent')}
+              className={cn(
+                'flex size-8 items-center justify-center',
+                viewMode === 'grid'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent',
+              )}
             >
               <LayoutGrid className="size-4" />
             </button>
@@ -261,7 +253,11 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
       </header>
 
       {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-6 pb-4" role="group" aria-label="Filter by category">
+        <div
+          className="flex flex-wrap gap-2 px-6 pb-4"
+          role="group"
+          aria-label="Filter by category"
+        >
           <FilterChip active={activeCategoryId === null} onClick={() => setActiveCategoryId(null)}>
             All
           </FilterChip>
@@ -277,19 +273,22 @@ export function SearchResults({ query, onOpenItem }: SearchResultsProps) {
         </div>
       )}
 
-      {error && (
+      {isError && (
         <p role="alert" className="px-6 py-2 text-sm text-destructive">
-          {error}
+          Unable to load search results.
         </p>
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6">
-        {isLoading && results.length === 0 ? (
+        {isLoading && allResults.length === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">Searching...</p>
         ) : total === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">No results to show.</p>
         ) : viewMode === 'grid' ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3" role="list">
+          <div
+            className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3"
+            role="list"
+          >
             {pageItems.map((item) => (
               <div key={item.id} role="listitem">
                 {renderResultCard(item)}

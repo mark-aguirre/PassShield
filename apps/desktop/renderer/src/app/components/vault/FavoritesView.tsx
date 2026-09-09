@@ -1,19 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import type { ItemSummary, ItemType } from '@passshield/contracts';
+import type { ItemType } from '@passshield/contracts';
 import { Star } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { ItemIcon } from '@/app/components/vault/ItemIcon';
+import { useItemList } from '@/hooks/useItems';
 
 /**
  * Props for {@link FavoritesView}.
  *
  * Renders the favorites surface required by Req 7.4: a list of items the user
- * has flagged as favorites. It fetches through the narrow
- * `window.passShield.items.list` IPC surface with a `favorites` scope and shows
- * only non-secret metadata from {@link ItemSummary}. _(Req 7.4)_
+ * has flagged as favorites, showing only non-secret metadata from
+ * {@link ItemSummary}. _(Req 7.4)_
  */
 export interface FavoritesViewProps {
   /** Currently selected item id, used to highlight the active row. */
@@ -29,31 +28,12 @@ const ITEM_TYPE_LABEL: Record<ItemType, string> = {
 };
 
 /**
- * Favorites list: fetches favorite items and renders each as a metadata-only
- * row (icon, title, type subtitle). No secret values are shown. _(Req 7.4)_
+ * Favorites list: fetches favorite items via {@link useItemList} and renders
+ * each as a metadata-only row (icon, title, type subtitle). No secret values
+ * are shown. _(Req 7.4)_
  */
 export function FavoritesView({ selectedItemId = null, onOpenItem }: FavoritesViewProps) {
-  const [items, setItems] = useState<ItemSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadFavorites = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const summaries = await window.passShield.items.list({ scope: 'favorites' });
-      setItems(summaries);
-    } catch {
-      setItems([]);
-      setError('Unable to load favorites.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadFavorites();
-  }, [loadFavorites]);
+  const { data: items = [], isPending, isError } = useItemList({ scope: 'favorites' });
 
   return (
     <section className="flex h-full min-w-0 flex-col bg-card" aria-label="Favorites">
@@ -64,13 +44,13 @@ export function FavoritesView({ selectedItemId = null, onOpenItem }: FavoritesVi
         </div>
       </header>
 
-      {error && (
+      {isError && (
         <p role="alert" className="px-4 py-2 text-sm text-destructive">
-          {error}
+          Unable to load favorites.
         </p>
       )}
 
-      {isLoading && items.length === 0 ? (
+      {isPending && items.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">Loading...</p>
       ) : items.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">No favorites yet.</p>

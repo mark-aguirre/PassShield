@@ -22,6 +22,7 @@ import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCreateVault } from '@/hooks/useVault';
 import type { ViewTransition } from '../view-state';
 
 interface OnboardingFlowProps {
@@ -44,33 +45,36 @@ export default function OnboardingFlow({ onCreated }: OnboardingFlowProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [storageMode, setStorageMode] = useState<StorageMode>('local');
 
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [clientError, setClientError] = useState<string | null>(null);
 
   const nameId = useId();
   const passwordId = useId();
   const confirmId = useId();
   const errorId = useId();
 
+  const createVaultMutation = useCreateVault();
+  const submitting = createVaultMutation.isPending;
+  const error = clientError ?? createVaultMutation.error?.message ?? null;
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) {
       return;
     }
-    setError(null);
+    setClientError(null);
 
     const trimmedName = name.trim();
     if (trimmedName.length === 0) {
-      setError('Enter a name for your vault.');
+      setClientError('Enter a name for your vault.');
       return;
     }
     if (masterPassword.length === 0) {
-      setError('Set a master password.');
+      setClientError('Set a master password.');
       return;
     }
     // Reject on mismatch without creating a vault. _(Req 1.6)_
     if (masterPassword !== confirmPassword) {
-      setError('Passwords do not match. Please re-enter your confirmation.');
+      setClientError('Passwords do not match. Please re-enter your confirmation.');
       return;
     }
 
@@ -81,19 +85,12 @@ export default function OnboardingFlow({ onCreated }: OnboardingFlowProps) {
       storageMode,
     };
 
-    setSubmitting(true);
     try {
-      const result = await window.passShield.vault.create(input);
-      if (!result.ok) {
-        setError(result.error.message);
-        return;
-      }
+      await createVaultMutation.mutateAsync(input);
       // Vault created (and unlocked by the main process). Hand back to shell.
       onCreated('unlocked');
     } catch {
-      setError('Could not create the vault. Please try again.');
-    } finally {
-      setSubmitting(false);
+      // Error is surfaced via createVaultMutation.error above.
     }
   }
 

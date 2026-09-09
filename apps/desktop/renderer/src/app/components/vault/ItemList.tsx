@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ItemListFilter, ItemSort, ItemSummary, ItemType } from '@passshield/contracts';
 import { ListFilter, Star } from 'lucide-react';
 
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useItemList } from '@/hooks/useItems';
 
 /**
  * Props for {@link ItemList}.
@@ -24,10 +25,7 @@ import {
 export interface ItemListProps {
   /** Human-readable title for the current scope, e.g. "All Items". _(Req 17.2)_ */
   scopeTitle: string;
-  /**
-   * Filter passed to `window.passShield.items.list`. When omitted the list
-   * requests the default (all) scope. Changing the filter re-fetches.
-   */
+  /** Filter passed to `useItemList`. When omitted the list uses the default (all) scope. */
   filter?: ItemListFilter;
   /** Currently selected item id, used to highlight the active row. */
   selectedItemId: string | null;
@@ -39,11 +37,6 @@ export interface ItemListProps {
    * of {@link ItemSummary.isFavorite}. _(Req 7.4)_
    */
   onToggleFavorite?: (id: string, next: boolean) => void;
-  /**
-   * Bumped by the parent whenever the item set may have changed (e.g. after a
-   * favorite toggle) so the list re-fetches its metadata.
-   */
-  refreshToken?: number;
 }
 
 /** Selectable sort options exposed by the list header. _(Req 17.2)_ */
@@ -63,10 +56,9 @@ const ITEM_TYPE_LABEL: Record<ItemType, string> = {
  * Middle pane of the vault dashboard: a scope header (title, item count, sort
  * control) and a metadata-only list of items.
  *
- * Items are fetched through the narrow `window.passShield.items.list` IPC
- * surface, which returns {@link ItemSummary} records carrying no secrets. The
- * component owns its own sort state and re-fetches whenever the filter or sort
- * changes. _(Req 6.4, 7.4, 17.2, 17.4)_
+ * Items are fetched via {@link useItemList}, which uses TanStack Query for
+ * caching and re-fetching. The component owns its own sort state and re-fetches
+ * whenever the filter or sort changes via the query key. _(Req 6.4, 7.4, 17.2, 17.4)_
  */
 export function ItemList({
   scopeTitle,
@@ -74,38 +66,10 @@ export function ItemList({
   selectedItemId,
   onSelectItem,
   onToggleFavorite,
-  refreshToken,
 }: ItemListProps) {
   const [sort, setSort] = useState<ItemSort>('titleAsc');
-  const [items, setItems] = useState<ItemSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const scope = filter?.scope;
-  const categoryId = filter?.categoryId;
-
-  const loadItems = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const effectiveFilter: ItemListFilter | undefined =
-        scope === undefined ? undefined : { scope, categoryId };
-      const summaries = await window.passShield.items.list(effectiveFilter, sort);
-      setItems(summaries);
-    } catch {
-      setItems([]);
-      setError('Unable to load items.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [scope, categoryId, sort]);
-
-  useEffect(() => {
-    void loadItems();
-    // `refreshToken` is an intentional trigger: bumping it re-fetches the list
-    // after external mutations (e.g. a favorite toggle) even though it is not
-    // read inside `loadItems`.
-  }, [loadItems, refreshToken]);
+  const { data: items = [], isPending, isError } = useItemList(filter, sort);
 
   function handleStarClick(item: ItemSummary, event: React.MouseEvent) {
     event.stopPropagation();
@@ -148,13 +112,13 @@ export function ItemList({
         </div>
       </header>
 
-      {error && (
+      {isError && (
         <p role="alert" className="px-4 py-2 text-sm text-destructive">
-          {error}
+          Unable to load items.
         </p>
       )}
 
-      {isLoading && items.length === 0 ? (
+      {isPending && items.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">Loading...</p>
       ) : items.length === 0 ? (
         <p className="p-4 text-sm text-muted-foreground">No items to show.</p>

@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { useCategories, useDeleteCategory, useSaveCategory } from '@/hooks/useCategories';
 
 /**
  * Props for {@link CategoryManagement}.
@@ -127,44 +128,23 @@ function editorFromCategory(category: CategoryWithCount): EditorState {
  * Full-width category management surface (Screen 6): a page header with an
  * "Add Category" action, a toolbar (search, count, sort, list/grid toggle), a
  * table/grid of categories with item counts and edit/delete actions, an inline
- * create/edit form, and an informational banner.
+ * create/edit form, and an informational banner. _(Req 7.1, 7.2, 7.3, 21.1-21.4)_
  *
- * Categories are fetched through `window.passShield.categories.list`, which
- * returns {@link CategoryWithCount} records. Saves go through `categories.save`
- * and deletes through `categories.delete`; both re-fetch on success. Deleting a
- * category is confirmed and the main process safely reassigns (clears) affected
- * items' category so no items are lost. _(Req 21.3)_
+ * TanStack Query invalidation handles refreshing item/category counts after
+ * mutations — no explicit `onChanged` callback is needed.
  */
-export function CategoryManagement({ onChanged }: CategoryManagementProps) {
-  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function CategoryManagement() {
+  const { data: categories = [], isPending: isLoading, isError } = useCategories();
+  const saveCategory = useSaveCategory();
+  const deleteCategory = useDeleteCategory();
 
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<CategorySort>('nameAsc');
   const [view, setView] = useState<CategoryView>('list');
 
   const [editor, setEditor] = useState<EditorState | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-
-  const loadCategories = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const rows = await window.passShield.categories.list();
-      setCategories(rows);
-    } catch {
-      setCategories([]);
-      setError('Unable to load categories.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadCategories();
-  }, [loadCategories]);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const visibleCategories = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
@@ -205,9 +185,8 @@ export function CategoryManagement({ onChanged }: CategoryManagementProps) {
 
   async function handleSave(event: React.FormEvent) {
     event.preventDefault();
-    if (editor === null) {
-      return;
-    }
+    if (editor === null) return;
+
     const name = editor.name.trim();
     if (name.length === 0) {
       setFormError('Name is required.');
@@ -222,21 +201,12 @@ export function CategoryManagement({ onChanged }: CategoryManagementProps) {
       color: editor.color.trim() === '' ? null : editor.color.trim(),
     };
 
-    setIsSaving(true);
     setFormError(null);
     try {
-      const result = await window.passShield.categories.save(input);
-      if (!result.ok) {
-        setFormError(result.error.message || 'Unable to save category.');
-        return;
-      }
+      await saveCategory.mutateAsync(input);
       closeEditor();
-      await loadCategories();
-      onChanged?.();
-    } catch {
-      setFormError('Unable to save category.');
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Unable to save category.');
     }
   }
 
@@ -246,24 +216,14 @@ export function CategoryManagement({ onChanged }: CategoryManagementProps) {
         ? ` Its ${category.itemCount} item${category.itemCount === 1 ? '' : 's'} will become uncategorized.`
         : '';
     const confirmed = window.confirm(`Delete the category "${category.name}"?${itemNote}`);
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
-    setError(null);
+    setDeleteError(null);
     try {
-      const result = await window.passShield.categories.delete(category.id);
-      if (!result.ok) {
-        setError(result.error.message || 'Unable to delete category.');
-        return;
-      }
-      if (editor?.id === category.id) {
-        closeEditor();
-      }
-      await loadCategories();
-      onChanged?.();
-    } catch {
-      setError('Unable to delete category.');
+      await deleteCategory.mutateAsync(category.id);
+      if (editor?.id === category.id) closeEditor();
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'Unable to delete category.');
     }
   }
 
@@ -409,19 +369,19 @@ export function CategoryManagement({ onChanged }: CategoryManagementProps) {
           )}
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={closeEditor} disabled={isSaving}>
+            <Button type="button" variant="outline" onClick={closeEditor} disabled={saveCategory.isPending}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? 'Saving...' : editor.id ? 'Save Changes' : 'Create Category'}
+            <Button type="submit" disabled={saveCategory.isPending}>
+              {saveCategory.isPending ? 'Saving...' : editor.id ? 'Save Changes' : 'Create Category'}
             </Button>
           </div>
         </form>
       )}
 
-      {error && (
+      {deleteError && (
         <p role="alert" className="mx-8 mb-2 text-sm text-destructive">
-          {error}
+          {deleteError}
         </p>
       )}
 

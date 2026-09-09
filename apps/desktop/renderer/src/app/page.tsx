@@ -6,86 +6,87 @@
  * On mount it probes the main process for vault existence and lock status and
  * chooses which top-level screen to show:
  *   - no vault            -> OnboardingFlow (first-run create).   _(Req 1.1)_
- *   - vault exists, locked -> UnlockScreen (Task 8.2).            _(Req 2.1)_
- *   - vault unlocked       -> VaultLayout (Task 9, three-pane dashboard).
+ *   - vault exists, locked -> UnlockScreen.                       _(Req 2.1)_
+ *   - vault unlocked       -> VaultLayout (three-pane dashboard).
  *
+ * All IPC calls are mediated by the `useVaultExists`, `useVaultStatus`, and
+ * `useVaultLockListener` hooks — no `window.passShield` calls appear here.
  * Screens report state changes back through the shared `AppView` transition
  * contract in `./view-state`, keeping routing state owned here.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { useVaultExists, useVaultLockListener, useVaultStatus } from '@/hooks/useVault';
 import OnboardingFlow from './components/OnboardingFlow';
 import UnlockScreen from './components/UnlockScreen';
 import VaultLayout from './components/vault/VaultLayout';
-import type { AppView } from './view-state';
 
 export default function HomePage() {
-  const [view, setView] = useState<AppView>('loading');
+  const existsQuery = useVaultExists();
+  const statusQuery = useVaultStatus();
 
-  const goTo = useCallback((next: AppView) => {
-    setView(next);
-  }, []);
+  // Redirect to the unlock screen when the main process pushes a lock event —
+  // chiefly when the auto-lock inactivity timer elapses. The hook invalidates
+  // the vault status query so `statusQuery` reflects the new locked state
+  // automatically. (Req 2.4, 3.2)
+  useVaultLockListener();
 
-  const probe = useCallback(async () => {
-    setView('loading');
-    try {
-      const exists = await window.passShield.vault.exists();
-      if (!exists) {
-        setView('onboarding');
-        return;
-      }
-      const status = await window.passShield.vault.status();
-      setView(status.locked ? 'locked' : 'unlocked');
-    } catch {
-      setView('error');
-    }
-  }, []);
+  const retry = useCallback(() => {
+    void existsQuery.refetch();
+    void statusQuery.refetch();
+  }, [existsQuery, statusQuery]);
 
-  useEffect(() => {
-    void probe();
-  }, [probe]);
-
-  // Redirect to the unlock screen when the main process reports the vault has
-  // locked on its own — chiefly when the auto-lock inactivity timer elapses.
-  // We only transition away from the unlocked shell; manual lock and app exit
-  // already drive their own navigation, so guarding on the current view keeps
-  // this from fighting those paths. _(Req 2.4, 3.2)_
-  useEffect(() => {
-    const unsubscribe = window.passShield.vault.onLocked(() => {
-      setView((current) => (current === 'unlocked' ? 'locked' : current));
-    });
-    return unsubscribe;
-  }, []);
-
-  switch (view) {
-    case 'loading':
-      return <CenteredMessage title="passShield" detail="Loading your vault..." />;
-
-    case 'onboarding':
-      return <OnboardingFlow onCreated={goTo} />;
-
-    case 'locked':
-      return <UnlockScreen onUnlocked={() => goTo('unlocked')} />;
-
-    case 'unlocked':
-      // Three-pane vault layout (Task 9). The lock control transitions the
-      // shell back to the locked screen once the vault is locked.
-      return <VaultLayout onLock={() => goTo('locked')} />;
-
-    case 'error':
-    default:
-      return (
-        <CenteredMessage
-          title="Something went wrong"
-          detail="passShield could not reach the vault service."
-          action={{ label: 'Try again', onClick: () => void probe() }}
-        />
-      );
+  // Still loading vault existence or status.
+  if (existsQuery.isPending || (existsQuery.data === true && statusQuery.isPending)) {
+    return <CenteredMessage title="passShield" detail="Loading your vault..." />;
   }
+
+  // IPC probe failed.
+  if (existsQuery.isError || (existsQuery.data === true && statusQuery.isError)) {
+    return (
+      <CenteredMessage
+        title="Something went wrong"
+        detail="passShield could not reach the vault service."
+        action={{ label: 'Try again', onClick: retry }}
+      />
+    );
+  }
+
+  // No vault on this device yet — run the first-run create flow.
+  if (existsQuery.data === false) {
+    return (
+      <OnboardingFlow
+        onCreated={() => {
+          void existsQuery.refetch();
+          void statusQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  // Vault exists but is locked — show the unlock screen.
+  if (statusQuery.data?.locked) {
+    return (
+      <UnlockScreen
+        onUnlocked={() => {
+          void statusQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  // Vault is unlocked — render the three-pane dashboard.
+  return (
+    <VaultLayout
+      onLock={() => {
+        void statusQuery.refetch();
+      }}
+    />
+  );
 }
 
-/** Simple centered status screen used for loading / unlocked / error states. */
+/** Simple centered status screen used for loading / error states. */
 function CenteredMessage({
   title,
   detail,

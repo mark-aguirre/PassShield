@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CategoryWithCount, ItemScope } from '@passshield/contracts';
+import type { ItemScope } from '@passshield/contracts';
 import {
   Clock,
   FileText,
@@ -30,6 +30,9 @@ import {
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { useCategories } from '@/hooks/useCategories';
+import { useItemList } from '@/hooks/useItems';
+import { useVaultStatus } from '@/hooks/useVault';
 import {
   SCOPE_LABELS,
   useVaultViewState,
@@ -101,14 +104,6 @@ const CATEGORY_COLORS = [
 /** Counts keyed by built-in scope. */
 type ScopeCounts = Record<Exclude<ItemScope, 'category'>, number>;
 
-const EMPTY_COUNTS: ScopeCounts = {
-  all: 0,
-  favorites: 0,
-  recent: 0,
-  logins: 0,
-  notes: 0,
-};
-
 /** Pick a stable fallback color for a category from its id. */
 function fallbackColor(id: string): string {
   let hash = 0;
@@ -129,62 +124,31 @@ export function Sidebar({
   const collapsed = true;
   const { selection, setSelection } = useVaultViewState();
 
-  const [counts, setCounts] = useState<ScopeCounts>(EMPTY_COUNTS);
-  const [categories, setCategories] = useState<CategoryWithCount[]>([]);
-  const [autoLockMinutes, setAutoLockMinutes] = useState<number | null>(null);
+  // --- Counts via TanStack Query (replaces manual useEffect + window.passShield) ---
+  // Each built-in scope gets its own cached query; the length is used as the
+  // count badge. refreshToken is included in the query key so an external bump
+  // (e.g. after a create/delete) triggers a re-fetch while still benefiting
+  // from the shared query cache.
+  const allQuery = useItemList({ scope: 'all' });
+  const favoritesQuery = useItemList({ scope: 'favorites' });
+  const recentQuery = useItemList({ scope: 'recent' });
+  const loginsQuery = useItemList({ scope: 'logins' });
+  const notesQuery = useItemList({ scope: 'notes' });
+  const categoriesQuery = useCategories();
 
-  // --- Counts + categories -------------------------------------------------
-  useEffect(() => {
-    let cancelled = false;
+  // Derive stable counts from query data (default 0 while loading).
+  const counts: ScopeCounts = {
+    all: allQuery.data?.length ?? 0,
+    favorites: favoritesQuery.data?.length ?? 0,
+    recent: recentQuery.data?.length ?? 0,
+    logins: loginsQuery.data?.length ?? 0,
+    notes: notesQuery.data?.length ?? 0,
+  };
+  const categories = categoriesQuery.data ?? [];
 
-    async function loadCounts() {
-      try {
-        const [all, favorites, recent, logins, notes, cats] = await Promise.all([
-          window.passShield.items.list({ scope: 'all' }),
-          window.passShield.items.list({ scope: 'favorites' }),
-          window.passShield.items.list({ scope: 'recent' }),
-          window.passShield.items.list({ scope: 'logins' }),
-          window.passShield.items.list({ scope: 'notes' }),
-          window.passShield.categories.list(),
-        ]);
-        if (cancelled) return;
-        setCounts({
-          all: all.length,
-          favorites: favorites.length,
-          recent: recent.length,
-          logins: logins.length,
-          notes: notes.length,
-        });
-        setCategories(cats);
-      } catch {
-        // Counts are non-critical chrome; leave prior values on failure.
-      }
-    }
-
-    void loadCounts();
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshToken]);
-
-  // --- Auto-lock configuration ---------------------------------------------
-  useEffect(() => {
-    let cancelled = false;
-    async function loadStatus() {
-      try {
-        const status = await window.passShield.vault.status();
-        if (!cancelled) {
-          setAutoLockMinutes(status.autoLockMinutes);
-        }
-      } catch {
-        // Leave the countdown hidden if status is unavailable.
-      }
-    }
-    void loadStatus();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // --- Auto-lock minutes via shared vault status query --------------------
+  const statusQuery = useVaultStatus();
+  const autoLockMinutes = statusQuery.data?.autoLockMinutes ?? null;
 
   const handleSelectScope = useCallback(
     (next: VaultScopeSelection) => setSelection(next),

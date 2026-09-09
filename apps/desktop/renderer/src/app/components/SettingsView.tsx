@@ -22,7 +22,7 @@
  * _(Req 3.1, 3.4, 9.4, 14.2, 14.3)_
  */
 
-import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
+import { useCallback, useId, useState, type ReactNode } from 'react';
 import type { CloseBehavior, Settings, ThemePreference } from '@passshield/contracts';
 import {
   Cloud,
@@ -40,6 +40,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { applyAppearance } from '@/lib/appearance';
+import { api } from '@/lib/api';
+import { useChangeMasterPassword, useAppVersion } from '@/hooks/useVault';
+import { useSettings, useUpdateSettings } from '@/hooks/useSettings';
 import {
   Select,
   SelectContent,
@@ -115,60 +118,36 @@ export function SettingsView({ onClose }: SettingsViewProps) {
   const headingId = useId();
 
   const [activePane, setActivePane] = useState<SettingsPane>('general');
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [isLoading, setIsLoading] = useState(true);
-  const [persistenceUnavailable, setPersistenceUnavailable] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const loaded = await window.passShield.settings.get();
-        if (!cancelled) {
-          setSettings(loaded);
-          applyAppearance({ theme: loaded.theme, accentColor: loaded.accentColor });
-          setPersistenceUnavailable(false);
-        }
-      } catch {
-        if (!cancelled) {
-          setSettings(DEFAULT_SETTINGS);
-          setPersistenceUnavailable(true);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // --- Data via TanStack Query (replaces manual useEffect + window.passShield) ---
+  const settingsQuery = useSettings();
+  const updateMutation = useUpdateSettings();
 
-  const applyPatch = useCallback((patch: Partial<Settings>) => {
-    setSettings((previous) => {
-      const next = { ...previous, ...patch };
-      // Reflect appearance edits (theme / accent) immediately and app-wide,
-      // before persistence resolves, so the control feels responsive.
+  const settings = settingsQuery.data ?? DEFAULT_SETTINGS;
+  const isLoading = settingsQuery.isPending;
+  // The settings store is unavailable if the query errored and we're falling
+  // back to defaults, or if an update mutation failed.
+  const persistenceUnavailable =
+    settingsQuery.isError || (updateMutation.isError && !updateMutation.isPending);
+
+  const applyPatch = useCallback(
+    (patch: Partial<Settings>) => {
+      // Reflect appearance edits immediately (optimistic update handles the
+      // cache; applyAppearance handles the CSS variables).
       if ('theme' in patch || 'accentColor' in patch) {
+        const next = { ...settings, ...patch };
         applyAppearance({ theme: next.theme, accentColor: next.accentColor });
       }
-      return next;
-    });
-    void (async () => {
-      try {
-        const merged = await window.passShield.settings.update(patch);
-        setSettings(merged);
-        if ('theme' in patch || 'accentColor' in patch) {
-          applyAppearance({ theme: merged.theme, accentColor: merged.accentColor });
-        }
-        setPersistenceUnavailable(false);
-      } catch {
-        setPersistenceUnavailable(true);
-      }
-    })();
-  }, []);
+      updateMutation.mutate(patch, {
+        onSuccess: (merged) => {
+          if ('theme' in patch || 'accentColor' in patch) {
+            applyAppearance({ theme: merged.theme, accentColor: merged.accentColor });
+          }
+        },
+      });
+    },
+    [settings, updateMutation],
+  );
 
   return (
     <section className="flex h-full min-h-0 w-full bg-background" aria-labelledby={headingId}>
@@ -619,12 +598,9 @@ function Explainer({ title, text }: { title: string; text: string }) {
 }
 
 /**
- * Inline form for changing the master password. Collects the current password,
- * the new password, and its confirmation, does light client-side validation,
- * and calls `window.passShield.vault.changeMasterPassword`. The main process
- * re-verifies the current password and re-encrypts the vault under the new one;
- * the plaintext passwords never leave this boundary beyond the IPC call and are
- * cleared from state on success. _(Req 12)_
+ * Inline form for changing the master password. Uses `useChangeMasterPassword`
+ * so errors surface via the mutation's `error` state rather than hand-rolled
+ * `useState` flags. _(Req 12)_
  */
 function ChangeMasterPasswordForm() {
   const currentId = useId();
@@ -634,9 +610,13 @@ function ChangeMasterPasswordForm() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isBusy, setIsBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const changeMutation = useChangeMasterPassword();
+  const isBusy = changeMutation.isPending;
+  const serverError = changeMutation.error?.message ?? null;
+  const error = clientError ?? serverError;
 
   const resetFields = useCallback(() => {
     setCurrentPassword('');
@@ -646,39 +626,28 @@ function ChangeMasterPasswordForm() {
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError(null);
+    setClientError(null);
     setSuccess(false);
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      setError('Please fill in all fields.');
+      setClientError('Please fill in all fields.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('The new passwords do not match.');
+      setClientError('The new passwords do not match.');
       return;
     }
     if (newPassword === currentPassword) {
-      setError('The new password must be different from the current one.');
+      setClientError('The new password must be different from the current one.');
       return;
     }
 
-    setIsBusy(true);
     try {
-      const result = await window.passShield.vault.changeMasterPassword({
-        currentPassword,
-        newPassword,
-        confirmPassword,
-      });
-      if (result.ok) {
-        setSuccess(true);
-        resetFields();
-      } else {
-        setError(result.error.message);
-      }
+      await changeMutation.mutateAsync({ currentPassword, newPassword, confirmPassword });
+      setSuccess(true);
+      resetFields();
     } catch {
-      setError('Could not change the master password. Please try again.');
-    } finally {
-      setIsBusy(false);
+      // Error is surfaced via changeMutation.error above.
     }
   }
 
@@ -772,7 +741,7 @@ function BackupPane() {
     setStatus(null);
     setIsBusy(true);
     try {
-      const result = await window.passShield.backup.export(PLACEHOLDER_BACKUP_PATH);
+      const result = await api.backup.export(PLACEHOLDER_BACKUP_PATH);
       setStatus(result.ok ? 'Backup exported.' : result.error.message);
     } catch {
       setStatus('Backup is not available yet in this build.');
@@ -786,10 +755,7 @@ function BackupPane() {
     setStatus(null);
     setIsBusy(true);
     try {
-      const result = await window.passShield.backup.restore(
-        PLACEHOLDER_BACKUP_PATH,
-        restorePassword,
-      );
+      const result = await api.backup.restore(PLACEHOLDER_BACKUP_PATH, restorePassword);
       setStatus(result.ok ? 'Backup restored.' : result.error.message);
     } catch {
       setStatus('Restore is not available yet in this build.');
@@ -850,28 +816,9 @@ function BackupPane() {
 // ---------------------------------------------------------------------------
 
 function AboutPane() {
-  // Source the version from the running app (Electron's app.getVersion()) so it
-  // always reflects the real build rather than a hard-coded constant that
-  // drifts out of date between releases.
-  const [version, setVersion] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const value = await window.passShield.app.version();
-        if (!cancelled) {
-          setVersion(value);
-        }
-      } catch {
-        // Version unavailable (e.g. store not reachable) — omit rather than
-        // show a misleading hard-coded value.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Source the version from the running app via the useAppVersion hook so it
+  // always reflects the real build. _(Req 14)_
+  const { data: version } = useAppVersion();
 
   return (
     <div className="max-w-3xl">

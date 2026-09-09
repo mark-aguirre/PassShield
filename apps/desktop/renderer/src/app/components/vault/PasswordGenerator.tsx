@@ -49,6 +49,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api';
 
 /** Props for {@link PasswordGenerator}. */
 export interface PasswordGeneratorProps {
@@ -111,7 +112,7 @@ export function PasswordGenerator({ onSaveAsCustom, onClose }: PasswordGenerator
     const token = ++requestToken.current;
     setBusy(true);
     try {
-      const result = await window.passShield.generator.generate(opts);
+      const result = await api.generator.generate(opts);
       if (token !== requestToken.current) {
         return;
       }
@@ -157,7 +158,7 @@ export function PasswordGenerator({ onSaveAsCustom, onClose }: PasswordGenerator
       return;
     }
     try {
-      await window.passShield.clipboard.copySecret(generated.value);
+      await api.clipboard.copySecret(generated.value);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {

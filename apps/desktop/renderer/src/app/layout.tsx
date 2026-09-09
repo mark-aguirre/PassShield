@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
-import AppearanceManager from './components/AppearanceManager';
+import Providers from './components/Providers';
 
 export const metadata: Metadata = {
   title: 'passShield',
@@ -10,15 +10,14 @@ export const metadata: Metadata = {
 
 /**
  * Root layout for the passShield renderer. Wraps every route with the base
- * document structure and global styles.
+ * document structure and global styles, and seeds the TanStack Query client
+ * via {@link Providers}.
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        {/* Applies the saved Theme + Accent color app-wide on startup. */}
-        <AppearanceManager />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

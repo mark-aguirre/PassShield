@@ -21,6 +21,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ItemType } from '@passshield/contracts';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
+import { useLockVault } from '@/hooks/useVault';
+import { useToggleFavorite } from '@/hooks/useItems';
 import ItemEditor from '../ItemEditor';
 import SettingsView from '../SettingsView';
 import CategoryManagement from './CategoryManagement';
@@ -129,8 +132,8 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
   // While the vault view is mounted the vault is unlocked, so we notify the
   // main process of non-secret user activity (mouse movement / key presses) so
   // its Auto-Lock Manager can reset the inactivity timer. Pings are throttled
-  // to at most one per ACTIVITY_PING_INTERVAL_MS and carry no payload. This is
-  // the only side effect added here; it never touches secret values. (Req 3.1)
+  // to at most one per ACTIVITY_PING_INTERVAL_MS and carry no payload. This
+  // routes through api.* (not window.passShield directly). (Req 3.1)
   useEffect(() => {
     let lastPingAt = 0;
 
@@ -140,7 +143,7 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
         return;
       }
       lastPingAt = now;
-      window.passShield.activity.ping();
+      api.activity.ping();
     };
 
     window.addEventListener('mousemove', handleActivity, { passive: true });
@@ -152,13 +155,31 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
     };
   }, []);
 
+  // --- Vault lock ----------------------------------------------------------
+  const lockMutation = useLockVault();
+
+  const handleLock = useCallback(async () => {
+    try {
+      await lockMutation.mutateAsync();
+    } finally {
+      // Always return to the locked screen even if the lock call throws; the
+      // shell will re-probe status on the way back.
+      onLock();
+    }
+  }, [lockMutation, onLock]);
+
+  // --- Favorite toggle -----------------------------------------------------
+  const toggleFavorite = useToggleFavorite();
+
+  const handleToggleFavorite = useCallback(
+    (id: string, isFavorite: boolean) => {
+      void toggleFavorite.mutateAsync({ id, isFavorite });
+    },
+    [toggleFavorite],
+  );
+
   // --- Chrome-owned local state --------------------------------------------
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Bumped whenever the item set may have changed so the sidebar (and any
-  // count-bearing panes) refresh. Create/edit/delete flows call the setter.
-  const [refreshToken, setRefreshToken] = useState(0);
-  const bumpRefreshToken = useCallback(() => setRefreshToken((token) => token + 1), []);
 
   // The create/edit item overlay. `null` = closed. _(Req 4, 5)_
   const [editor, setEditor] = useState<EditorState>(null);
@@ -186,16 +207,6 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
     });
   }, []);
 
-  const handleLock = useCallback(async () => {
-    try {
-      await window.passShield.vault.lock();
-    } finally {
-      // Always return to the locked screen even if the lock call throws; the
-      // shell will re-probe status on the way back.
-      onLock();
-    }
-  }, [onLock]);
-
   const handleNewItem = useCallback((itemType: ItemType) => {
     setEditor({ mode: 'create', initialType: itemType });
   }, []);
@@ -210,63 +221,21 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
     setEditor({ mode: 'create', initialType: 'note', parentId });
   }, []);
 
-  // Toggle an item's favorite flag. The list pane carries only non-secret
-  // metadata, so we fetch the full (decrypted) item, flip `isFavorite`, and
-  // persist through the existing `items.save` surface (the only mutating item
-  // API). On success we bump the refresh token so the list, sidebar counts,
-  // and Favorites scope re-fetch. _(Req 7.4)_
-  const handleToggleFavorite = useCallback(
-    async (id: string, next: boolean) => {
-      try {
-        const detail = await window.passShield.items.get(id);
-        if (!detail.ok) {
-          return;
-        }
-        const item = detail.value;
-        const saveInput =
-          item.itemType === 'login'
-            ? {
-                id: item.id,
-                itemType: 'login' as const,
-                title: item.title,
-                categoryId: item.categoryId,
-                isFavorite: next,
-                payload: item.payload,
-              }
-            : {
-                id: item.id,
-                itemType: 'note' as const,
-                title: item.title,
-                categoryId: item.categoryId,
-                isFavorite: next,
-                payload: item.payload,
-              };
-        const result = await window.passShield.items.save(saveInput);
-        if (result.ok) {
-          bumpRefreshToken();
-        }
-      } catch {
-        // Swallow: a failed toggle leaves the star in its prior state; the
-        // refresh token is not bumped so no stale UI is shown.
-      }
-    },
-    [bumpRefreshToken],
-  );
+  // Toggle an item's favorite flag via the useToggleFavorite mutation.
+  // TanStack Query invalidation automatically re-fetches all item lists. _(Req 7.4)_
 
   const handleEditorSaved = useCallback(
     (savedId: string) => {
       setEditor(null);
-      bumpRefreshToken();
       selectItem(savedId);
     },
-    [bumpRefreshToken, selectItem],
+    [selectItem],
   );
 
   const handleEditorTrashed = useCallback(() => {
     setEditor(null);
-    bumpRefreshToken();
     selectItem(null);
-  }, [bumpRefreshToken, selectItem]);
+  }, [selectItem]);
 
   const handleEditorClose = useCallback(() => {
     setEditor(null);
@@ -304,7 +273,6 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
 
         <div className="flex min-h-0 flex-1">
           <Sidebar
-            refreshToken={refreshToken}
             isManagingCategories={manageCategories}
             onManageCategories={() => {
               setManageCategories(true);
@@ -337,7 +305,7 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
                 className="min-h-0 min-w-0 flex-1 overflow-auto"
                 aria-label="Category management"
               >
-                <CategoryManagement onChanged={bumpRefreshToken} />
+                <CategoryManagement />
               </section>
             ) : (
               <>
@@ -383,7 +351,6 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
                         selectedItemId={selectedItemId}
                         onSelectItem={(id) => selectItem(id)}
                         onToggleFavorite={handleToggleFavorite}
-                        refreshToken={refreshToken}
                       />
                     )}
                   </section>
@@ -413,7 +380,6 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
                       onEdit={handleEditItem}
                       onOpenItem={selectItem}
                       onAddSubPage={handleAddSubPage}
-                      refreshToken={refreshToken}
                       onClose={() => selectItem(null)}
                     />
                   </div>
