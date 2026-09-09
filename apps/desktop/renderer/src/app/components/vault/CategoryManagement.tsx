@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CategoryWithCount, SaveCategoryInput } from '@passshield/contracts';
+import type { CategoryWithCount, SaveCategoryInput } from '@PassShield/contracts';
 import {
   Briefcase,
   Code2,
@@ -38,7 +38,7 @@ import { useCategories, useDeleteCategory, useSaveCategory } from '@/hooks/useCa
  * Renders Screen 6 (Category Management) as a full-width content view:
  * create/edit/delete categories with names, descriptions, icons, and colors,
  * showing each category's active item count. Talks to the vault only through
- * the narrow `window.passShield.categories.*` IPC surface and never touches
+ * the narrow `window.PassShield.categories.*` IPC surface and never touches
  * secrets. _(Req 7.1, 7.2, 7.3, 21.1-21.4)_
  */
 export interface CategoryManagementProps {

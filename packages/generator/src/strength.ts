@@ -7,7 +7,7 @@
  * external or enterprise password policy. (Req 18.1, 18.2, 18.3)
  */
 
-import type { PasswordStrength } from '@passshield/contracts';
+import type { PasswordStrength } from '@PassShield/contracts';
 
 const LABELS: Record<PasswordStrength['score'], string> = {
   0: 'Very Weak',

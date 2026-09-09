@@ -13,9 +13,9 @@ const config = [
   ...compat.extends('next/core-web-vitals', 'next/typescript'),
 
   // -------------------------------------------------------------------------
-  // Security boundary: window.passShield must ONLY be referenced in
+  // Security boundary: window.PassShield must ONLY be referenced in
   // src/lib/api.ts. All other renderer code must go through `api.*` from that
-  // module. This rule catches accidental direct window.passShield calls at lint
+  // module. This rule catches accidental direct window.PassShield calls at lint
   // time so the abstraction boundary doesn't erode silently.
   // -------------------------------------------------------------------------
   {
@@ -26,9 +26,9 @@ const config = [
         'error',
         {
           selector:
-            "MemberExpression[object.name='window'][property.name='passShield']",
+            "MemberExpression[object.name='window'][property.name='PassShield']",
           message:
-            "Direct access to window.passShield is forbidden outside src/lib/api.ts. " +
+            "Direct access to window.PassShield is forbidden outside src/lib/api.ts. " +
             "Import `api` from '@/lib/api' instead.",
         },
       ],

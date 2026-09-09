@@ -12,7 +12,7 @@
  * requests are made.
  */
 
-import type { NoteAttachment } from '@passshield/contracts';
+import type { NoteAttachment } from '@PassShield/contracts';
 
 /**
  * Largest single attachment allowed, in bytes (~5 MB of decoded file data).

@@ -10,7 +10,7 @@
  *   - Create mode  (no `itemId`): starts from a blank form; the item type can
  *     be switched between Login and Secure Note.
  *   - Edit mode    (`itemId` provided): fetches the existing decrypted item via
- *     `window.passShield.items.get` and prefills the form.
+ *     `window.PassShield.items.get` and prefills the form.
  *
  * Security / boundary posture:
  *   - The renderer never encrypts anything. It sends the plaintext secret
@@ -46,7 +46,7 @@ import type {
   ItemType,
   NoteAttachment,
   SaveItemInput,
-} from '@passshield/contracts';
+} from '@PassShield/contracts';
 import {
   ArrowLeft,
   Bold,

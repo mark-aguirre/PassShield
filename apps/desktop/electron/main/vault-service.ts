@@ -7,9 +7,9 @@
  * handed to the renderer. (Req 11.5, 12.4)
  *
  * The service orchestrates the three lower-level packages:
- * - `@passshield/crypto`  — deriveKey / createVerifier / verify / encrypt / decrypt
- * - `@passshield/database` — openDatabase + item/category CRUD over encrypted rows
- * - `@passshield/contracts` — the shared item/category/result types
+ * - `@PassShield/crypto`  — deriveKey / createVerifier / verify / encrypt / decrypt
+ * - `@PassShield/database` — openDatabase + item/category CRUD over encrypted rows
+ * - `@PassShield/contracts` — the shared item/category/result types
  *
  * Every secret-bearing operation (reading a decrypted item, saving an item,
  * item/category mutations) is gated behind an unlocked vault: when the vault is
@@ -31,7 +31,7 @@ import {
   type EncryptedPayload,
   type VaultKey,
   type VerifierRecord,
-} from '@passshield/crypto';
+} from '@PassShield/crypto';
 import {
   closeDatabase,
   createCategory,
@@ -57,7 +57,7 @@ import {
   type ItemSort as DbItemSort,
   type VaultDatabase,
   type VaultItemRow,
-} from '@passshield/database';
+} from '@PassShield/database';
 import type {
   Category,
   CategoryWithCount,
@@ -73,7 +73,7 @@ import type {
   SaveCategoryInput,
   SaveItemInput,
   VaultStatus,
-} from '@passshield/contracts';
+} from '@PassShield/contracts';
 
 /** Default auto-lock timeout (minutes) surfaced in {@link VaultStatus}. */
 const DEFAULT_AUTO_LOCK_MINUTES = 15;

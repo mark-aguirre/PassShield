@@ -1,5 +1,5 @@
 /**
- * Shared TanStack Query client for the passShield renderer.
+ * Shared TanStack Query client for the PassShield renderer.
  *
  * Configuration is tuned for a local Electron IPC data source:
  *

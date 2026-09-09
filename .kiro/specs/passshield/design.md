@@ -2,7 +2,7 @@
 
 ## Overview
 
-passShield V1 is a local-first desktop password manager built with an Electron shell hosting a Next.js/React/TypeScript renderer, backed by an encrypted SQLite vault. The defining constraint is a hard security boundary: the renderer never touches the database, filesystem, or encryption keys directly. All sensitive work happens in the Electron main process and is reached only through a narrow, typed IPC contract.
+PassShield V1 is a local-first desktop password manager built with an Electron shell hosting a Next.js/React/TypeScript renderer, backed by an encrypted SQLite vault. The defining constraint is a hard security boundary: the renderer never touches the database, filesystem, or encryption keys directly. All sensitive work happens in the Electron main process and is reached only through a narrow, typed IPC contract.
 
 V1 delivers the local vault end-to-end: create/unlock/lock, login and secure-note items, search, categories, favorites, a password generator, safe reveal/copy, and encrypted local backup/restore, packaged for Windows. Cloud synchronization (V2) is intentionally out of scope but the data model and layering are chosen so it can be added without reworking V1.
 
@@ -30,7 +30,7 @@ Cloud accounts, sync engine, device registry, browser extensions, mobile, sharin
 |  Renderer (Next.js / React / TypeScript)               |
 |    Dashboard | Vault list | Item detail                |
 |    Password Generator | Search | Settings              |
-|    -> only calls window.passShield.* (context bridge)  |
+|    -> only calls window.PassShield.* (context bridge)  |
 +---------------------------+----------------------------+
                             |
                     Preload (contextBridge)
@@ -229,7 +229,7 @@ The visual design is defined by the mockups in `.kiro/specs/screens/`. This sect
 
 ### Shared Chrome (all screens)
 
-- **Top bar:** passShield logo (left); centered global search (`Search vault...`, `Ctrl+K`); right cluster with a `+ New Item` split button (dropdown for item type), a lock button, a settings gear, and native window controls (minimize/maximize/close).
+- **Top bar:** PassShield logo (left); centered global search (`Search vault...`, `Ctrl+K`); right cluster with a `+ New Item` split button (dropdown for item type), a lock button, a settings gear, and native window controls (minimize/maximize/close).
 - **Left sidebar:** VAULT section with `All Items`, `Favorites`, `Recent`, `Logins`, `Secure Notes`, and an expandable `Categories`. A CATEGORIES section lists each category with its colored icon and item count. Each nav row shows a count badge.
 - **Sidebar footer:** vault status card (`Vault Unlocked` + `Auto-lock in mm:ss`), a sync status card (V2; shown as inert/hidden in V1), app version, and an "All systems secure" indicator.
 - **Bottom status bar:** left shows `Vault is unlocked and ready`; right shows sync state (V2).

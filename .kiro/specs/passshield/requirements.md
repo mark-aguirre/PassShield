@@ -2,7 +2,7 @@
 
 ## Introduction
 
-passShield is a local-first, cross-platform desktop password manager. Its central principle is that the user's vault belongs to the user: a person can install the app, create a vault, store and generate credentials, and use it indefinitely **without an online account**. Cloud synchronization is an optional, future capability layered on top of the local experience.
+PassShield is a local-first, cross-platform desktop password manager. Its central principle is that the user's vault belongs to the user: a person can install the app, create a vault, store and generate credentials, and use it indefinitely **without an online account**. Cloud synchronization is an optional, future capability layered on top of the local experience.
 
 This spec covers the **V1 (Local Vault)** release scope, targeting Windows first with an architecture that keeps the door open for optional cloud sync (V2) and macOS/Linux (V4). The technology stack is Next.js/React/TypeScript for the renderer, Electron for the desktop runtime, and encrypted SQLite for local storage.
 
@@ -175,7 +175,7 @@ V1 explicitly excludes: cloud sync, accounts, device management, browser extensi
 
 ### Requirement 15: Windows Packaging
 
-**User Story:** As a Windows user, I want to install passShield through a supported Windows package, so that installation is straightforward and trustworthy.
+**User Story:** As a Windows user, I want to install PassShield through a supported Windows package, so that installation is straightforward and trustworthy.
 
 #### Acceptance Criteria
 

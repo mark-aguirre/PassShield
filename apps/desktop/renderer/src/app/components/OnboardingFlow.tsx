@@ -3,7 +3,7 @@
 /**
  * OnboardingFlow — first-run vault creation.
  *
- * Shown by the app shell when `window.passShield.vault.exists()` reports no
+ * Shown by the app shell when `window.PassShield.vault.exists()` reports no
  * vault. Collects a vault name, master password + confirmation, and a storage
  * mode (V1 offers only "local", which is the default). On submit it rejects a
  * confirmation mismatch inline without creating anything, otherwise it calls
@@ -16,7 +16,7 @@
  */
 
 import { useId, useState, type FormEvent } from 'react';
-import type { CreateVaultInput, StorageMode } from '@passshield/contracts';
+import type { CreateVaultInput, StorageMode } from '@PassShield/contracts';
 import { ShieldCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -108,7 +108,7 @@ export default function OnboardingFlow({ onCreated }: OnboardingFlowProps) {
             Create your vault
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            passShield stores your credentials locally, protected by a master password. There
+            PassShield stores your credentials locally, protected by a master password. There
             is no account to create and nothing is sent over the network.
           </p>
         </header>

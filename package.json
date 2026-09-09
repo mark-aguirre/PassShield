@@ -1,9 +1,9 @@
 {
-  "name": "passshield",
+  "name": "PassShield",
   "version": "0.1.0",
   "private": true,
-  "description": "passShield - a local-first, cross-platform desktop password manager",
-  "author": "passShield",
+  "description": "PassShield - a local-first, cross-platform desktop password manager",
+  "author": "PassShield",
   "license": "UNLICENSED",
   "main": "apps/desktop/dist/main/main.js",
   "workspaces": [
@@ -14,11 +14,11 @@
   "scripts": {
     "typecheck": "tsc --build",
     "build": "tsc --build",
-    "build:renderer": "npm run build --workspace @passshield/renderer",
-    "build:main": "npm run build --workspace @passshield/desktop",
-    "dev:renderer": "npm run dev --workspace @passshield/renderer",
-    "dev": "npm run dev --workspace @passshield/desktop",
-    "start": "npm run start --workspace @passshield/desktop",
+    "build:renderer": "npm run build --workspace @PassShield/renderer",
+    "build:main": "npm run build --workspace @PassShield/desktop",
+    "dev:renderer": "npm run dev --workspace @PassShield/renderer",
+    "dev": "npm run dev --workspace @PassShield/desktop",
+    "start": "npm run start --workspace @PassShield/desktop",
     "test": "vitest run",
     "test:watch": "vitest",
     "clean": "tsc --build --clean"

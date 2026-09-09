@@ -1,5 +1,5 @@
 /**
- * @passshield/contracts
+ * @PassShield/contracts
  *
  * Shared type definitions for the IPC surface and vault item model.
  *
@@ -7,7 +7,7 @@
  * Electron main process and the Next.js renderer. The renderer only ever
  * reaches the main process through the narrow, typed IPC surface defined at
  * the bottom of this file (`PassShieldApi`), exposed via the preload
- * contextBridge as `window.passShield`.
+ * contextBridge as `window.PassShield`.
  *
  * Design references: "Security Boundary and IPC Contract" and "Data Model".
  * Requirements: 4.1, 5.1, 7.2, 11.4.
@@ -334,7 +334,7 @@ export interface PasswordStrength {
 
 /**
  * The complete, narrow IPC contract exposed to the renderer via the preload
- * contextBridge as `window.passShield`. There is no generic passthrough
+ * contextBridge as `window.PassShield`. There is no generic passthrough
  * channel; every operation is an explicit, typed method. _(Req 11.2, 11.4)_
  *
  * Grouping matches the design's "Security Boundary and IPC Contract" section:
@@ -448,6 +448,6 @@ export interface PassShieldApi {
 /** Global augmentation for the renderer-visible API. */
 declare global {
   interface Window {
-    passShield: PassShieldApi;
+    PassShield: PassShieldApi;
   }
 }

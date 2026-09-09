@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# run.sh - start passShield for local development or a production-style run.
+# run.sh - start PassShield for local development or a production-style run.
 #
-# passShield is an Electron (main/preload) + Next.js (renderer) app in an npm
+# PassShield is an Electron (main/preload) + Next.js (renderer) app in an npm
 # workspaces monorepo. Running it means coordinating two processes:
 #   1. the Next.js renderer dev server on http://localhost:$RENDERER_PORT
 #   2. the Electron shell, which loads that dev server
@@ -168,8 +168,8 @@ run_dev() {
   log "Building main/preload and launching Electron at ${RENDERER_URL}..."
   # `dev` builds the renderer + main/preload then runs electron .
   # Tell the Electron main process which URL to load (main.ts reads
-  # PASSSHIELD_RENDERER_URL, defaulting to http://localhost:3000).
-  PASSSHIELD_RENDERER_URL="${RENDERER_URL}" npm run dev
+  # PassShield_RENDERER_URL, defaulting to http://localhost:3000).
+  PassShield_RENDERER_URL="${RENDERER_URL}" npm run dev
 }
 
 run_prod() {

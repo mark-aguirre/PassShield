@@ -1,5 +1,5 @@
 /**
- * @passshield/crypto
+ * @PassShield/crypto
  *
  * KDF-based key derivation, verification-material, and AEAD encrypt/decrypt
  * wrappers for the vault.

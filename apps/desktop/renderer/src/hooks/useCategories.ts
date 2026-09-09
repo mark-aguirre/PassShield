@@ -20,7 +20,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { SaveCategoryInput } from '@passshield/contracts';
+import type { SaveCategoryInput } from '@PassShield/contracts';
 import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------

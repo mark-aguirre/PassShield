@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 
 /**
- * Next.js configuration for the passShield renderer.
+ * Next.js configuration for the PassShield renderer.
  *
  * The renderer is packaged inside Electron and loaded from the local
  * filesystem in production, so we use static export (`output: 'export'`)

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ItemType } from '@passshield/contracts';
+import type { ItemType } from '@PassShield/contracts';
 import { FileText, KeyRound } from 'lucide-react';
 
 import { cn } from '@/lib/utils';

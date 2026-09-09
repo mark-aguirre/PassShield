@@ -1,5 +1,5 @@
 /**
- * CRUD queries over the passShield vault, working at the storage-row level.
+ * CRUD queries over the PassShield vault, working at the storage-row level.
  *
  * This layer is deliberately encryption-agnostic: it accepts and returns the
  * secret payload only as opaque ciphertext text in `vault_item.encrypted_payload`.

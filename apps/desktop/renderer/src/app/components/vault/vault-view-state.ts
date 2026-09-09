@@ -17,7 +17,7 @@
  */
 
 import { createContext, useContext } from 'react';
-import type { ItemScope } from '@passshield/contracts';
+import type { ItemScope } from '@PassShield/contracts';
 
 /**
  * A fully-resolved scope selection. `categoryId` is only meaningful — and

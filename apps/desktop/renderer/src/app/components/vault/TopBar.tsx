@@ -3,7 +3,7 @@
 /**
  * TopBar — the persistent top region of the shared chrome.
  *
- * Layout mirrors the mockups: the passShield wordmark on the left over the
+ * Layout mirrors the mockups: the PassShield wordmark on the left over the
  * navy shell, a centered global search box with a Ctrl+K affordance, and a
  * right-hand action cluster with a `+ New Item` split button (dropdown for
  * Login / Secure Note), a lock control, and a settings control. Native window
@@ -14,7 +14,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import type { ItemType } from '@passshield/contracts';
+import type { ItemType } from '@PassShield/contracts';
 import { ChevronDown, Lock, Plus, Search, Settings } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -88,7 +88,7 @@ export function TopBar({
       <div className="flex min-w-[200px] items-center gap-2">
         <img
           src="./logo.png"
-          alt="passShield logo"
+          alt="PassShield logo"
           className="size-9 rounded-xl object-contain shadow-sm"
         />
 

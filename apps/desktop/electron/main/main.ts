@@ -1,7 +1,7 @@
 import { app, BrowserWindow, clipboard, Menu, nativeImage, shell, Tray } from 'electron';
 import * as path from 'node:path';
 
-import type { CloseBehavior } from '@passshield/contracts';
+import type { CloseBehavior } from '@PassShield/contracts';
 
 import { AutoLockManager } from './auto-lock-manager.js';
 import { BackupService } from './backup-service.js';
@@ -12,7 +12,7 @@ import { SettingsStore } from './settings-store.js';
 import { VaultService } from './vault-service.js';
 
 /**
- * Electron main entry for passShield.
+ * Electron main entry for PassShield.
  *
  * Establishes the hard security boundary required by the design: the
  * renderer runs with context isolation on, Node integration off, and the
@@ -29,7 +29,7 @@ const isDev = !app.isPackaged;
  * Development renderer URL. The Next.js dev server serves the renderer here
  * during `npm run dev:renderer`.
  */
-const DEV_RENDERER_URL = process.env.PASSSHIELD_RENDERER_URL ?? 'http://localhost:3000';
+const DEV_RENDERER_URL = process.env.PassShield_RENDERER_URL ?? 'http://localhost:3000';
 
 /**
  * Path to the statically exported renderer used in production builds.
@@ -71,7 +71,7 @@ let mainWindow: BrowserWindow | null = null;
  * The system tray icon. Created lazily the first time the window is hidden to
  * the tray (or at startup when `startMinimized` is set) so we do not add a tray
  * entry for users who chose "Quit on close" and never minimize. Clicking it, or
- * its "Open passShield" menu item, restores the window. (Req 14 — close/minimize
+ * its "Open PassShield" menu item, restores the window. (Req 14 — close/minimize
  * behavior)
  */
 let tray: Tray | null = null;
@@ -185,16 +185,16 @@ function ensureTray(): void {
   }
 
   tray = image.isEmpty() ? new Tray(WINDOW_ICON_PATH) : new Tray(image);
-  tray.setToolTip('passShield');
+  tray.setToolTip('PassShield');
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Open passShield',
+      label: 'Open PassShield',
       click: () => showMainWindow(),
     },
     { type: 'separator' },
     {
-      label: 'Quit passShield',
+      label: 'Quit PassShield',
       click: () => {
         isQuitting = true;
         app.quit();

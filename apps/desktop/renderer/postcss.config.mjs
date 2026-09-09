@@ -1,5 +1,5 @@
 /**
- * PostCSS configuration for the passShield renderer.
+ * PostCSS configuration for the PassShield renderer.
  *
  * Tailwind CSS v4 ships its own PostCSS plugin (`@tailwindcss/postcss`) which
  * replaces the v3 `tailwindcss` + `autoprefixer` pair. This is the only plugin

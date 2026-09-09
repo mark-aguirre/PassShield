@@ -4,7 +4,7 @@
 # (Req 15.1) and prepares MSIX/Microsoft Store-compatible packaging that is
 # validated during release engineering (Req 15.2). The vault database itself is
 # stored per-user by the app at runtime under app.getPath('userData')
-# (%APPDATA%/passShield), so no packaging config is needed for Req 15.3 — see
+# (%APPDATA%/PassShield), so no packaging config is needed for Req 15.3 — see
 # apps/desktop/electron/main/main.ts and docs/release/windows-packaging.md.
 #
 # Store packaging: on electron-builder 26.x the `appx` target below produces the
@@ -20,11 +20,11 @@
 # platform C++ build tools on the build machine (Visual Studio C++ Build Tools
 # on Windows). Microsoft Store submission identity, publisher, and signing are
 # finalized during release engineering; the msix block below uses placeholders.
-appId: com.passshield.app
+appId: com.PassShield.app
 # Single canonical product/display name used across every installed component
 # (NSIS install, Start Menu shortcut, and APPX tile). This MUST match casing
 # everywhere to satisfy Microsoft Store policy 10.1.1.11 (On Device Tiles):
-# a mismatch (e.g. "PassShield" vs "passShield") surfaces as TWO differently
+# a mismatch (e.g. "PassShield" vs "PassShield") surfaces as TWO differently
 # named Start Menu tiles and gets the submission rejected.
 productName: PassShield
 

@@ -1,5 +1,5 @@
 /**
- * @passshield/database
+ * @PassShield/database
  *
  * SQLite schema, a version-keyed migration runner, and CRUD queries over
  * encrypted item payloads with plaintext metadata columns.

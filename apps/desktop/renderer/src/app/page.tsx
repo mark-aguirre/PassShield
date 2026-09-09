@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * App shell / top-level router for the passShield renderer.
+ * App shell / top-level router for the PassShield renderer.
  *
  * On mount it probes the main process for vault existence and lock status and
  * chooses which top-level screen to show:
@@ -10,7 +10,7 @@
  *   - vault unlocked       -> VaultLayout (three-pane dashboard).
  *
  * All IPC calls are mediated by the `useVaultExists`, `useVaultStatus`, and
- * `useVaultLockListener` hooks — no `window.passShield` calls appear here.
+ * `useVaultLockListener` hooks — no `window.PassShield` calls appear here.
  * Screens report state changes back through the shared `AppView` transition
  * contract in `./view-state`, keeping routing state owned here.
  */
@@ -39,7 +39,7 @@ export default function HomePage() {
 
   // Still loading vault existence or status.
   if (existsQuery.isPending || (existsQuery.data === true && statusQuery.isPending)) {
-    return <CenteredMessage title="passShield" detail="Loading your vault..." />;
+    return <CenteredMessage title="PassShield" detail="Loading your vault..." />;
   }
 
   // IPC probe failed.
@@ -47,7 +47,7 @@ export default function HomePage() {
     return (
       <CenteredMessage
         title="Something went wrong"
-        detail="passShield could not reach the vault service."
+        detail="PassShield could not reach the vault service."
         action={{ label: 'Try again', onClick: retry }}
       />
     );

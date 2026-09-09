@@ -25,7 +25,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ItemListFilter, ItemSort, SaveItemInput } from '@passshield/contracts';
+import type { ItemListFilter, ItemSort, SaveItemInput } from '@PassShield/contracts';
 import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------

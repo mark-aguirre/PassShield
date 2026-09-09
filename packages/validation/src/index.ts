@@ -1,5 +1,5 @@
 /**
- * @passshield/validation
+ * @PassShield/validation
  *
  * Input validation schemas for every mutating and input-bearing IPC
  * operation, so the main-process boundary can validate input shape.
@@ -11,9 +11,9 @@
  * never reaches the vault, crypto, or database layers. _(Req 11.2, 11.4)_
  *
  * Schemas are intentionally self-contained (they do not import the
- * `@passshield/contracts` types) so the boundary validator has no build-order
+ * `@PassShield/contracts` types) so the boundary validator has no build-order
  * coupling to the contracts package. Their shapes mirror the operation input
- * types declared in `@passshield/contracts`; each schema's inferred type is
+ * types declared in `@PassShield/contracts`; each schema's inferred type is
  * exported so callers can rely on parse output being correctly typed.
  *
  * Design reference: "Security Boundary and IPC Contract" — every handler first
@@ -54,7 +54,7 @@ export type LoginPayloadInput = z.infer<typeof loginPayloadSchema>;
 /**
  * A single note attachment: an email-style, Base64-encoded file. `size` is a
  * non-negative integer (bytes) and `data` is the Base64 payload (no `data:`
- * prefix). Shape mirrors `NoteAttachment` in `@passshield/contracts`. _(Req 5.1)_
+ * prefix). Shape mirrors `NoteAttachment` in `@PassShield/contracts`. _(Req 5.1)_
  */
 export const noteAttachmentSchema = z.object({
   filename: z.string(),
@@ -316,7 +316,7 @@ export type BackupRestoreInputParsed = z.infer<typeof backupRestoreInputSchema>;
 
 /**
  * A registry mapping every input-bearing IPC operation to its input schema,
- * grouped to match the `PassShieldApi` surface in `@passshield/contracts`.
+ * grouped to match the `PassShieldApi` surface in `@PassShield/contracts`.
  *
  * The IPC router can look up the schema for an operation and call `.parse` /
  * `.safeParse` on the raw request payload before dispatching. Read operations

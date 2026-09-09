@@ -14,7 +14,7 @@ import { deriveKey } from './kdf.js';
 import type { VaultKey, VerifierRecord } from './types.js';
 
 /** Domain-separation label so the verifier tag is not the encryption key. */
-const VERIFIER_INFO = Buffer.from('passShield/vault-verifier/v1', 'utf8');
+const VERIFIER_INFO = Buffer.from('PassShield/vault-verifier/v1', 'utf8');
 
 /** Length of the derived verifier tag in bytes. */
 const VERIFIER_TAG_BYTES = 32;

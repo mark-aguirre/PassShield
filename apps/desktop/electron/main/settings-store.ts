@@ -18,21 +18,21 @@
  * state. The connection is opened with the same migration-aware `openDatabase`
  * used elsewhere, so the `settings` table exists by the time this store runs.
  *
- * The DB layer (`@passshield/database`) stores string values only; this store
+ * The DB layer (`@PassShield/database`) stores string values only; this store
  * is where a typed {@link Settings} value is serialized to strings on write and
  * coerced back on read. On read, stored values are merged OVER
  * {@link DEFAULT_SETTINGS} so any key that was never persisted falls back to a
  * sensible default rather than being missing. (Req 14.3)
  */
 
-import type { CloseBehavior, Settings, ThemePreference } from '@passshield/contracts';
+import type { CloseBehavior, Settings, ThemePreference } from '@PassShield/contracts';
 import {
   closeDatabase,
   getAllSettings,
   openDatabase,
   setSettings,
   type VaultDatabase,
-} from '@passshield/database';
+} from '@PassShield/database';
 
 /** The minimal logger shape this store accepts, matching the shared Logger. */
 export interface SettingsStoreLogger {

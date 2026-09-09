@@ -1,5 +1,5 @@
 {
-  "name": "@passshield/generator",
+  "name": "@PassShield/generator",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -16,6 +16,6 @@
     "clean": "tsc --build --clean"
   },
   "dependencies": {
-    "@passshield/contracts": "0.1.0"
+    "@PassShield/contracts": "0.1.0"
   }
 }

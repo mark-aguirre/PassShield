@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { notePayloadSchema, saveItemInputSchema } from '@passshield/validation';
+import { notePayloadSchema, saveItemInputSchema } from '@PassShield/validation';
 
 /**
  * Secure-note payload validation.

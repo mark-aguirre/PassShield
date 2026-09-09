@@ -17,14 +17,14 @@ import type {
   SaveItemInput,
   Settings,
   VaultStatus,
-} from '@passshield/contracts';
+} from '@PassShield/contracts';
 
 /**
- * Preload script for passShield.
+ * Preload script for PassShield.
  *
  * Runs in an isolated context and is the only bridge between the renderer and
  * the main process. It publishes exactly the narrow {@link PassShieldApi}
- * surface on `window.passShield` via `contextBridge.exposeInMainWorld`. Every
+ * surface on `window.PassShield` via `contextBridge.exposeInMainWorld`. Every
  * operation is an explicit, typed method that forwards to a single named IPC
  * channel; there is no generic `send(channel, data)` passthrough and no
  * arbitrary channel is reachable from the renderer. (Req 11.1, 11.2, 11.4)
@@ -99,7 +99,7 @@ const CHANNELS = {
  * so it stays structurally in sync with the shared contract; each method is a
  * thin, explicit wrapper over `ipcRenderer.invoke` for one channel.
  */
-const passShieldApi: PassShieldApi = {
+const PassShieldApi: PassShieldApi = {
   app: {
     version: (): Promise<string> => ipcRenderer.invoke(CHANNELS.app.version),
   },
@@ -182,4 +182,4 @@ const passShieldApi: PassShieldApi = {
 };
 
 // Publish exactly the PassShieldApi surface. No generic passthrough. (Req 11.1, 11.2)
-contextBridge.exposeInMainWorld('passShield', passShieldApi);
+contextBridge.exposeInMainWorld('PassShield', PassShieldApi);

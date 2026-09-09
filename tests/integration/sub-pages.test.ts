@@ -11,7 +11,7 @@ import {
   trashItem,
   updateItem,
   type VaultDatabase,
-} from '@passshield/database';
+} from '@PassShield/database';
 
 /**
  * Secure-note sub-pages, exercised at the database query layer.

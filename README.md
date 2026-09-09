@@ -1,4 +1,4 @@
-# passShield
+# PassShield
 
 A local-first, cross-platform desktop password manager. Your vault belongs to
 you: create a vault, store and generate credentials, and use it indefinitely
@@ -29,7 +29,7 @@ docs/  { architecture, security, product, qa }
 The renderer runs with `contextIsolation: true`, `nodeIntegration: false`, and
 `sandbox: true`. It never touches SQLite, the filesystem, or encryption keys —
 all privileged work happens in the Electron main process and is reached only
-through the narrow `window.passShield.*` API exposed by the preload script.
+through the narrow `window.PassShield.*` API exposed by the preload script.
 
 ## Prerequisites
 

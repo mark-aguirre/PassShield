@@ -4,12 +4,12 @@ import './globals.css';
 import Providers from './components/Providers';
 
 export const metadata: Metadata = {
-  title: 'passShield',
+  title: 'PassShield',
   description: 'A local-first desktop password manager.',
 };
 
 /**
- * Root layout for the passShield renderer. Wraps every route with the base
+ * Root layout for the PassShield renderer. Wraps every route with the base
  * document structure and global styles, and seeds the TanStack Query client
  * via {@link Providers}.
  */

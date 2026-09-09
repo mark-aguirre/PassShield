@@ -1,7 +1,7 @@
 /**
  * Structured, non-secret logger for the Electron main process.
  *
- * passShield deliberately logs only NON-SECRET operational events — vault
+ * PassShield deliberately logs only NON-SECRET operational events — vault
  * locked, vault unlocked, migration applied, and similar lifecycle markers.
  * It must never log master passwords, encryption keys, decrypted passwords,
  * secure-note contents, authentication tokens, or recovery secrets. (Req 13.1)

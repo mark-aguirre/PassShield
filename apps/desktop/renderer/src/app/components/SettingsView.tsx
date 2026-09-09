@@ -9,7 +9,7 @@
  * item. Cloud Sync is rendered as a disabled placeholder for a future version.
  *
  * Data flow / boundary posture:
- *   - Current settings are read via `window.passShield.settings.get()`, falling
+ *   - Current settings are read via `window.PassShield.settings.get()`, falling
  *     back to sensible in-memory defaults if the store is unavailable so the UI
  *     stays functional and persists automatically once the store lands.
  *   - Field changes call `settings.update(patch)` optimistically; on rejection
@@ -23,7 +23,7 @@
  */
 
 import { useCallback, useId, useState, type ReactNode } from 'react';
-import type { CloseBehavior, Settings, ThemePreference } from '@passshield/contracts';
+import type { CloseBehavior, Settings, ThemePreference } from '@PassShield/contracts';
 import {
   Cloud,
   DatabaseBackup,
@@ -61,7 +61,7 @@ export interface SettingsViewProps {
 /** The nav panes available in V1. Cloud Sync is a disabled placeholder. */
 type SettingsPane = 'general' | 'security' | 'cloud' | 'backup' | 'about';
 
-const APP_NAME = 'passShield';
+const APP_NAME = 'PassShield';
 
 /** Sensible in-memory defaults used until the settings store is available. */
 const DEFAULT_SETTINGS: Settings = {
@@ -81,7 +81,7 @@ const DEFAULT_SETTINGS: Settings = {
   preventClipboardHistory: true,
 };
 
-const PLACEHOLDER_BACKUP_PATH = 'passshield-backup.psbk';
+const PLACEHOLDER_BACKUP_PATH = 'PassShield-backup.psbk';
 const AUTO_LOCK_CHOICES: readonly number[] = [1, 5, 15, 30, 60];
 const CLIPBOARD_CLEAR_CHOICES: readonly number[] = [10, 30, 45, 60, 120];
 
@@ -93,7 +93,7 @@ const THEME_OPTIONS: readonly { value: ThemePreference; label: string }[] = [
 
 const CLOSE_BEHAVIOR_OPTIONS: readonly { value: CloseBehavior; label: string }[] = [
   { value: 'minimizeToTray', label: 'Minimize to system tray' },
-  { value: 'quit', label: 'Quit passShield' },
+  { value: 'quit', label: 'Quit PassShield' },
 ];
 
 const LANGUAGE_OPTIONS: readonly { value: string; label: string }[] = [
@@ -119,7 +119,7 @@ export function SettingsView({ onClose }: SettingsViewProps) {
 
   const [activePane, setActivePane] = useState<SettingsPane>('general');
 
-  // --- Data via TanStack Query (replaces manual useEffect + window.passShield) ---
+  // --- Data via TanStack Query (replaces manual useEffect + window.PassShield) ---
   const settingsQuery = useSettings();
   const updateMutation = useUpdateSettings();
 
@@ -313,7 +313,7 @@ function GeneralPane({ settings, onChange }: PaneProps) {
         <Row
           icon={<SettingsIcon className="size-4" />}
           label="Launch on startup"
-          description="Start passShield automatically when you sign in."
+          description="Start PassShield automatically when you sign in."
         >
           <Switch
             checked={settings.launchOnStartup}
@@ -420,7 +420,7 @@ function GeneralPane({ settings, onChange }: PaneProps) {
         <Row
           icon={<SettingsIcon className="size-4" />}
           label="Check for updates automatically"
-          description="Keep passShield up to date with the latest improvements and security fixes."
+          description="Keep PassShield up to date with the latest improvements and security fixes."
         >
           <Switch
             checked={settings.checkForUpdates}
@@ -491,7 +491,7 @@ function SecurityPane({ settings, onChange }: PaneProps) {
             <Row
               icon={<ShieldCheck className="size-4" />}
               label="Lock on application exit"
-              description="Lock the vault when passShield is closed."
+              description="Lock the vault when PassShield is closed."
             >
               <Switch
                 checked={settings.lockOnAppExit}
@@ -830,7 +830,7 @@ function AboutPane() {
         <p className="text-lg font-semibold text-foreground">{APP_NAME}</p>
         {version && <p className="text-sm text-muted-foreground">Version {version}</p>}
         <p className="text-sm leading-relaxed text-muted-foreground">
-          passShield is a local-first password manager. Your vault stays on this device and works
+          PassShield is a local-first password manager. Your vault stays on this device and works
           fully offline — no account or network connection required.
         </p>
       </div>

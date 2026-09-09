@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ItemListFilter, ItemSort, ItemSummary, ItemType } from '@passshield/contracts';
+import type { ItemListFilter, ItemSort, ItemSummary, ItemType } from '@PassShield/contracts';
 import { ListFilter, Star } from 'lucide-react';
 
 import { cn } from '@/lib/utils';

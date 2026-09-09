@@ -15,7 +15,7 @@
  *
  * Security / policy posture:
  *   - Generation and strength scoring happen in the main/shared package, reached
- *     only via the narrow `window.passShield.generator.generate` IPC surface;
+ *     only via the narrow `window.PassShield.generator.generate` IPC surface;
  *     the renderer never scores or generates locally. _(Req 18.2)_
  *   - Copies route through `clipboard.copySecret`, which owns the clear timer in
  *     the main process. _(Req 8.5, 9.3, 9.4)_
@@ -30,7 +30,7 @@ import type {
   GeneratedPassword,
   GeneratorOptions,
   PasswordStrength,
-} from '@passshield/contracts';
+} from '@PassShield/contracts';
 import {
   Check,
   ChevronDown,

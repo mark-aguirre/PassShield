@@ -4,7 +4,7 @@
 
 **CQRS-lite + Application/Service Layer + Typed IPC Contract**
 
-The main-process side (IPC router, VaultService, repositories) is already well-structured. The gap is on the renderer side: every component calls `window.passShield.*` directly, owns its own async state machinery, and mixes UI lifecycle with data-fetching concerns.
+The main-process side (IPC router, VaultService, repositories) is already well-structured. The gap is on the renderer side: every component calls `window.PassShield.*` directly, owns its own async state machinery, and mixes UI lifecycle with data-fetching concerns.
 
 This plan introduces the renderer abstraction layers that are missing.
 
@@ -19,7 +19,7 @@ React Hook  (useVault / useItems / useCategories / useSettings)
     ↓
 lib/api.ts  (typed PassShieldApi binding)
     ↓
-IPC  (window.passShield — only touched by api.ts)
+IPC  (window.PassShield — only touched by api.ts)
     ↓
 IPC Handler  (ipc-router.ts)
     ↓
@@ -63,7 +63,7 @@ Repository / Database
 
 ## Key Architectural Rules
 
-1. **`window.passShield` is only referenced in `renderer/src/lib/api.ts`** — nowhere else in the renderer.
+1. **`window.PassShield` is only referenced in `renderer/src/lib/api.ts`** — nowhere else in the renderer.
 2. **Hooks handle UI state and lifecycle** — they do not own business logic. Business logic stays on the main-process service layer.
 3. **`Result<T>` is used consistently across IPC** — mutations surface errors via TanStack Query's `error` state rather than hand-rolled `useState` flags.
 4. **TanStack Query owns all async/cache state** — components do not write their own `useEffect` loading loops.
@@ -74,7 +74,7 @@ Repository / Database
 ## What Was Kept vs. Changed from the Original Proposal
 
 ### Kept
-- Typed IPC contract (`@passshield/contracts` `PassShieldApi`) — already existed, no changes needed
+- Typed IPC contract (`@PassShield/contracts` `PassShieldApi`) — already existed, no changes needed
 - Service/application layer on main process — already existed
 - `Result<T>` consistently on main-process side — already existed
 - CQRS-lite IPC handler split — already existed in `ipc-router.ts`
@@ -84,14 +84,14 @@ Repository / Database
 - `renderer/src/lib/api.ts` — typed binding (NEW)
 - TanStack Query as renderer async/cache layer (NEW)
 - Domain hooks: `useVault`, `useItems`, `useCategories`, `useSettings` (NEW)
-- All components migrated off `window.passShield.*` (MIGRATION)
-- ESLint rule banning `window.passShield` outside `lib/api.ts` (NEW)
+- All components migrated off `window.PassShield.*` (MIGRATION)
+- ESLint rule banning `window.PassShield` outside `lib/api.ts` (NEW)
 
 ---
 
 ## Current State (pre-refactor)
 
-`window.passShield.*` is called directly from:
+`window.PassShield.*` is called directly from:
 
 - `page.tsx` — vault probe, status, onLocked subscription
 - `UnlockScreen.tsx` — vault.unlock
@@ -111,13 +111,13 @@ Repository / Database
 ## Implementation Order
 
 ### Step 0 — Already done (main-process side)
-- `@passshield/contracts` — complete typed IPC contract ✓
+- `@PassShield/contracts` — complete typed IPC contract ✓
 - `preload.ts` — narrow, typed contextBridge exposure ✓
 - `ipc-router.ts` — validated handlers, safe Result<T> ✓
 - `vault-service.ts` — application service layer ✓
 
 ### Step 1 — `renderer/src/lib/api.ts`
-Typed binding: `export const api: PassShieldApi = window.passShield`
+Typed binding: `export const api: PassShieldApi = window.PassShield`
 
 ### Step 2 — TanStack Query setup
 Install `@tanstack/react-query`. Create `lib/query-client.ts`. Wire `QueryClientProvider` in app layout.
@@ -146,7 +146,7 @@ Replace vault probe/status/onLocked with `useVault()`.
 `CategoryManagement`, `SettingsView`, `PasswordGenerator`, `Sidebar`.
 
 ### Step 9 — ESLint security boundary
-`no-restricted-syntax` rule banning `window.passShield` outside `lib/api.ts`.
+`no-restricted-syntax` rule banning `window.PassShield` outside `lib/api.ts`.
 
 ---
 
@@ -173,7 +173,7 @@ renderer/src/
 │           └── PasswordGenerator.tsx  ← direct api.* via useMutation
 │
 └── lib/
-    ├── api.ts              ← ONLY place window.passShield is referenced  ← NEW
+    ├── api.ts              ← ONLY place window.PassShield is referenced  ← NEW
     ├── query-client.ts     ← QueryClient instance + config               ← NEW
     ├── utils.ts            ← unchanged
     ├── image.ts            ← unchanged

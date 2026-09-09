@@ -1,5 +1,5 @@
 /**
- * Version-keyed migration runner for the passShield vault database.
+ * Version-keyed migration runner for the PassShield vault database.
  *
  * Migrations are keyed on a schema/encryption version tracked by SQLite's
  * built-in `user_version` pragma. On startup the runner compares the database's

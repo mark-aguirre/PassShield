@@ -1,5 +1,5 @@
 /**
- * @passshield/generator
+ * @PassShield/generator
  *
  * A pure, environment-agnostic password generator shared by the renderer
  * (live preview) and any main-process needs. It uses the Web Crypto CSPRNG so
@@ -10,7 +10,7 @@
  * Requirements: 8.1, 8.2, 8.3, 8.4, 18.1, 18.2, 18.3, 19.1, 19.2, 19.3, 19.4.
  */
 
-import type { GeneratedPassword, GeneratorOptions } from '@passshield/contracts';
+import type { GeneratedPassword, GeneratorOptions } from '@PassShield/contracts';
 
 import { generatePassword } from './generator.js';
 import { computeStrength } from './strength.js';

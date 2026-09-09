@@ -19,7 +19,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Settings } from '@passshield/contracts';
+import type { Settings } from '@PassShield/contracts';
 import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------

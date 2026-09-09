@@ -72,7 +72,7 @@ export function UnlockScreen({ onUnlocked }: UnlockScreenProps) {
             <ShieldCheck className="size-6" />
           </span>
           <h1 id={`${passwordFieldId}-heading`} className="text-2xl font-bold text-foreground">
-            Unlock passShield
+            Unlock PassShield
           </h1>
           <p className="text-sm text-muted-foreground">
             Enter your master password to unlock your vault.

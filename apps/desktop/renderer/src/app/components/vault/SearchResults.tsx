@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import type { ItemSort, ItemType } from '@passshield/contracts';
+import type { ItemSort, ItemType } from '@PassShield/contracts';
 import {
   ChevronLeft,
   ChevronRight,

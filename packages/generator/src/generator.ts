@@ -14,7 +14,7 @@
  * Requirements: 8.1, 8.2, 8.3, 8.4, 19.1, 19.2, 19.3, 19.4.
  */
 
-import type { GeneratorOptions } from '@passshield/contracts';
+import type { GeneratorOptions } from '@PassShield/contracts';
 
 import { type CharClass, effectiveCharset } from './charsets.js';
 import { randomChar, shuffle } from './random.js';

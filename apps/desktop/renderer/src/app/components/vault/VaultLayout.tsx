@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ItemType } from '@passshield/contracts';
+import type { ItemType } from '@PassShield/contracts';
 import { PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
@@ -61,7 +61,7 @@ type EditorState =
 const ACTIVITY_PING_INTERVAL_MS = 5_000;
 
 /** localStorage key for persisting the item-list pane's collapsed state. */
-const LIST_COLLAPSED_KEY = 'passshield.layout.listCollapsed';
+const LIST_COLLAPSED_KEY = 'PassShield.layout.listCollapsed';
 
 /**
  * Reads a persisted boolean flag from localStorage, defaulting to `false` when
@@ -133,7 +133,7 @@ export function VaultLayout({ onLock }: VaultLayoutProps) {
   // main process of non-secret user activity (mouse movement / key presses) so
   // its Auto-Lock Manager can reset the inactivity timer. Pings are throttled
   // to at most one per ACTIVITY_PING_INTERVAL_MS and carry no payload. This
-  // routes through api.* (not window.passShield directly). (Req 3.1)
+  // routes through api.* (not window.PassShield directly). (Req 3.1)
   useEffect(() => {
     let lastPingAt = 0;
 

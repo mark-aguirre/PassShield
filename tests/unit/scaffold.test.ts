@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { CONTRACTS_PACKAGE_VERSION } from '@passshield/contracts';
-import { CRYPTO_PACKAGE_VERSION } from '@passshield/crypto';
-import { DATABASE_PACKAGE_VERSION } from '@passshield/database';
-import { VALIDATION_PACKAGE_VERSION } from '@passshield/validation';
+import { CONTRACTS_PACKAGE_VERSION } from '@PassShield/contracts';
+import { CRYPTO_PACKAGE_VERSION } from '@PassShield/crypto';
+import { DATABASE_PACKAGE_VERSION } from '@PassShield/database';
+import { VALIDATION_PACKAGE_VERSION } from '@PassShield/validation';
 
 /**
  * Scaffold smoke test.

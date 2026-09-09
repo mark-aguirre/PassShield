@@ -15,7 +15,7 @@
  * single OS-preference listener alive for the lifetime of the window.
  */
 
-import type { ThemePreference } from '@passshield/contracts';
+import type { ThemePreference } from '@PassShield/contracts';
 
 /** The subset of settings that affect appearance. */
 export interface Appearance {

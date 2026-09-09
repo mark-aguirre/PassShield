@@ -2,7 +2,7 @@
 
 ## Overview
 
-Scope: passShield V1 (Local Vault). Cloud sync and device management (V2) are out of scope. UI follows the mockups in `.kiro/specs/screens/`. Tasks are ordered so each builds on prior work, validates core functionality early through code, and keeps the app runnable as it grows. Every task references the specific requirements it satisfies.
+Scope: PassShield V1 (Local Vault). Cloud sync and device management (V2) are out of scope. UI follows the mockups in `.kiro/specs/screens/`. Tasks are ordered so each builds on prior work, validates core functionality early through code, and keeps the app runnable as it grows. Every task references the specific requirements it satisfies.
 
 The design commits to an Electron main process + Next.js/React/TypeScript renderer with a hard security boundary (renderer never touches DB, filesystem, or keys) and an encrypted SQLite vault. The design has no "Correctness Properties" section, so testing uses unit, integration, security, and end-to-end tests rather than property-based tests. Test-related sub-tasks are marked optional with `*`.
 
@@ -64,7 +64,7 @@ The design commits to an Electron main process + Next.js/React/TypeScript render
     - Validate input via the validation schemas, enforce locked-vault gating, dispatch to services, and return only view-needed data (secrets only on explicit items.get); return safe non-secret error shapes.
     - _Requirements: 11.2, 11.4, 11.5, 2.5, 4.5_
   - [x] 6.2 Expose the narrow API via `contextBridge.exposeInMainWorld` in preload
-    - Publish only the explicit `window.passShield.*` surface; no generic passthrough channel.
+    - Publish only the explicit `window.PassShield.*` surface; no generic passthrough channel.
     - _Requirements: 11.1, 11.2, 11.4_
   - [ ]* 6.3 Write a security test for renderer isolation
     - Assert the renderer has no direct SQLite/Node/filesystem access and cannot reach a generic IPC channel.

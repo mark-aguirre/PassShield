@@ -1,5 +1,5 @@
 /**
- * SQLite connection management for the passShield vault.
+ * SQLite connection management for the PassShield vault.
  *
  * Opens a better-sqlite3 database (synchronous, well-supported in the Electron
  * main process), applies durability/integrity pragmas, and brings the schema

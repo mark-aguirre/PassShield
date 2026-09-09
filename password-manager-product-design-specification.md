@@ -1,6 +1,6 @@
 # Product Design & Software Specification
 
-**Working Product Name:** passShield  
+**Working Product Name:** PassShield  
 **Product Type:** Cross-platform desktop password manager  
 **Initial Platform:** Windows  
 **Future Platforms:** macOS and Linux  

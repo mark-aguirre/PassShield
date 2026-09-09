@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Client-side providers for the passShield renderer.
+ * Client-side providers for the PassShield renderer.
  *
  * Wraps the application tree with the TanStack Query `QueryClientProvider` so
  * `useQuery` and `useMutation` are available throughout the renderer. The

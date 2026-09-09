@@ -19,7 +19,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import type { NoteAttachment } from '@passshield/contracts';
+import type { NoteAttachment } from '@PassShield/contracts';
 
 import { imageBlobToEmbeddable } from '@/lib/image';
 import { fileToAttachment } from '@/lib/attachment';

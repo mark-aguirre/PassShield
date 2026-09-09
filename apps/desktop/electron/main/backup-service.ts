@@ -24,7 +24,7 @@
  * The header carries a magic/format identifier, a format version, an
  * encryption-format version (the vault's `encryption_version`), a SHA-256
  * checksum of the raw database bytes, and the encoded body length. The header
- * lets restore reject anything that is not a passShield backup or is a version
+ * lets restore reject anything that is not a PassShield backup or is a version
  * it does not understand; the checksum lets it reject a corrupted body before
  * applying it. No secrets appear in the header. (Req 10.3, 10.4)
  *
@@ -35,7 +35,7 @@
  *   2. Decode the body and verify its SHA-256 matches the header checksum.
  *   3. Write the decoded database bytes to a temp file and open it to read the
  *      backup's stored verifier, then confirm the supplied master password
- *      unlocks the backup via `@passshield/crypto` `verify`.
+ *      unlocks the backup via `@PassShield/crypto` `verify`.
  *   4. Only then close any live DB handle (via the injected `onBeforeRestore`
  *      hook, which locks the vault) and atomically replace the live database
  *      file (write to a temp file next to it, then rename over it).
@@ -51,21 +51,21 @@ import { promises as nodeFs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { verify as cryptoVerify, type VerifierRecord } from '@passshield/crypto';
+import { verify as cryptoVerify, type VerifierRecord } from '@PassShield/crypto';
 import {
   closeDatabase,
   openDatabase,
   type VaultDatabase,
-} from '@passshield/database';
+} from '@PassShield/database';
 
-import type { Result } from '@passshield/contracts';
+import type { Result } from '@PassShield/contracts';
 
 /**
  * Magic identifier written into every backup header. Restore rejects any file
  * whose header does not carry this exact value, so a random or foreign file is
- * never mistaken for a passShield backup. (Req 10.3)
+ * never mistaken for a PassShield backup. (Req 10.3)
  */
-const BACKUP_MAGIC = 'passShield-backup';
+const BACKUP_MAGIC = 'PassShield-backup';
 
 /**
  * Current backup envelope format version. Restore accepts only versions it
@@ -135,7 +135,7 @@ export interface BackupServiceOptions {
    */
   readonly onBeforeRestore?: () => void;
   /**
-   * Password verifier from `@passshield/crypto`, injected for testability.
+   * Password verifier from `@PassShield/crypto`, injected for testability.
    * Defaults to the real `verify`.
    */
   readonly verify?: (password: string, verifier: VerifierRecord) => Promise<boolean>;
@@ -146,7 +146,7 @@ export interface BackupServiceOptions {
   readonly fs?: BackupFileSystem;
   /**
    * Opens a vault database at the given path (runs migrations, reads no
-   * secrets). Injected for testability; defaults to `@passshield/database`
+   * secrets). Injected for testability; defaults to `@PassShield/database`
    * `openDatabase`. Used to read the backup's stored verifier from a temp file.
    */
   readonly openDatabase?: (filename: string) => VaultDatabase;
@@ -276,12 +276,12 @@ export class BackupService {
     // --- Parse + validate the envelope. ---
     const parsed = parseEnvelope(raw);
     if (parsed === null) {
-      return fail('validation', 'The selected file is not a valid passShield backup.');
+      return fail('validation', 'The selected file is not a valid PassShield backup.');
     }
     const { header, dbBytes } = parsed;
 
     if (header.magic !== BACKUP_MAGIC) {
-      return fail('validation', 'The selected file is not a valid passShield backup.');
+      return fail('validation', 'The selected file is not a valid PassShield backup.');
     }
     if (header.formatVersion !== BACKUP_FORMAT_VERSION) {
       return fail(
@@ -304,7 +304,7 @@ export class BackupService {
     let tempDir: string | null = null;
     let backupOk = false;
     try {
-      tempDir = await this.fs.mkdtemp(path.join(os.tmpdir(), 'passshield-restore-'));
+      tempDir = await this.fs.mkdtemp(path.join(os.tmpdir(), 'PassShield-restore-'));
       const backupDbPath = path.join(tempDir, 'backup.sqlite');
       await this.fs.writeFile(backupDbPath, dbBytes);
 

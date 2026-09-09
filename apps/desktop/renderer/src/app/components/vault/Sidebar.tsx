@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ItemScope } from '@passshield/contracts';
+import type { ItemScope } from '@PassShield/contracts';
 import {
   Clock,
   FileText,
@@ -124,7 +124,7 @@ export function Sidebar({
   const collapsed = true;
   const { selection, setSelection } = useVaultViewState();
 
-  // --- Counts via TanStack Query (replaces manual useEffect + window.passShield) ---
+  // --- Counts via TanStack Query (replaces manual useEffect + window.PassShield) ---
   // Each built-in scope gets its own cached query; the length is used as the
   // count badge. refreshToken is included in the query key so an external bump
   // (e.g. after a create/delete) triggers a re-fetch while still benefiting

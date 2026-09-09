@@ -32,7 +32,7 @@
 
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChangeMasterPasswordInput, CreateVaultInput } from '@passshield/contracts';
+import type { ChangeMasterPasswordInput, CreateVaultInput } from '@PassShield/contracts';
 import { api } from '@/lib/api';
 
 // ---------------------------------------------------------------------------

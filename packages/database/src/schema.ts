@@ -1,5 +1,5 @@
 /**
- * SQLite schema definition for the passShield local vault.
+ * SQLite schema definition for the PassShield local vault.
  *
  * The schema follows the design's "Data Model" section. Sensitive content is
  * never stored in plaintext columns: secret fields live inside

@@ -25,7 +25,7 @@ import type {
   ItemSummary,
   LoginPayload,
   NotePayload,
-} from '@passshield/contracts';
+} from '@PassShield/contracts';
 import {
   Check,
   ChevronRight,

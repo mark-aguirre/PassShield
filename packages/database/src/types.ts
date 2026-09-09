@@ -1,5 +1,5 @@
 /**
- * Row shapes for the passShield vault schema.
+ * Row shapes for the PassShield vault schema.
  *
  * These interfaces mirror the physical columns declared in `./schema.ts` (snake
  * _case) as returned by better-sqlite3. They document the storage layer and are

@@ -3,10 +3,10 @@
  *
  * This is the single dispatch point between the renderer and the privileged
  * main-process services. It registers one `ipcMain.handle` per operation in
- * the {@link PassShieldApi} surface (see `@passshield/contracts`) and, for each
+ * the {@link PassShieldApi} surface (see `@PassShield/contracts`) and, for each
  * request:
  *
- *   1. Validates the raw input against the `@passshield/validation`
+ *   1. Validates the raw input against the `@PassShield/validation`
  *      `ipcInputSchemas` registry with `safeParse`; on failure it returns a
  *      safe `{ ok:false, error:{ code:'validation', message } }` result and
  *      never touches the vault, crypto, or database layers. (Req 11.2, 11.4)
@@ -24,7 +24,7 @@
  * ---------------------
  * Channels use `group:operation`, mirroring the dotted `PassShieldApi` surface
  * in the design ("Security Boundary and IPC Contract"). The preload script
- * (task 6.2) exposes `window.passShield.<group>.<operation>` by invoking the
+ * (task 6.2) exposes `window.PassShield.<group>.<operation>` by invoking the
  * matching `group:operation` channel. The canonical list lives in
  * {@link IpcChannels} below so preload and main share one source of truth.
  *
@@ -42,9 +42,9 @@ import type {
   Result,
   Settings,
   VaultStatus,
-} from '@passshield/contracts';
-import { generate, UnsatisfiableGeneratorOptionsError } from '@passshield/generator';
-import { ipcInputSchemas } from '@passshield/validation';
+} from '@PassShield/contracts';
+import { generate, UnsatisfiableGeneratorOptionsError } from '@PassShield/generator';
+import { ipcInputSchemas } from '@PassShield/validation';
 
 import type { BackupService } from './backup-service.js';
 import type { ClipboardService } from './clipboard-service.js';
@@ -389,7 +389,7 @@ export function registerIpcRouter(
   // generator.*  (pure; no vault state required)
   // -------------------------------------------------------------------------
 
-  // Dispatches to the pure @passshield/generator. Unsatisfiable option
+  // Dispatches to the pure @PassShield/generator. Unsatisfiable option
   // combinations are converted to a safe validation error carrying the
   // generator's user-facing message. (Req 8.1, 8.2, 19.4)
   handle(IpcChannels.generator.generate, (rawOpts: unknown): Result<GeneratedPassword> => {
