@@ -13,7 +13,7 @@
  * (Req 1.4, 4.2, 5.2, 7.2, 13.2, 20.1, 21.1)
  */
 
-export { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_VERSION } from './schema.js';
+export { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_VERSION } from './schema.js';
 
 export {
   getSchemaVersion,
@@ -85,6 +85,9 @@ export {
   // Emergency recovery code hash (non-secret one-way hash only)
   getEmergencyCodeHash,
   setEmergencyCodeHash,
+  // Emergency recovery key escrow (vault key wrapped under the recovery code)
+  getEmergencyWrappedKey,
+  setEmergencyWrappedKey,
 } from './emergency-code.js';
 
 /** Marker for the database package version surface. */

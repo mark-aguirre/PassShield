@@ -93,7 +93,7 @@ export function TopBar({
         />
 
         <span className="text-lg font-bold tracking-tight">
-          pass<span className="text-primary">Shield</span>
+          Pass<span className="text-primary">Shield</span>
         </span>
       </div>
 

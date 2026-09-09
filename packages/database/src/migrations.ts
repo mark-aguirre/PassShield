@@ -16,7 +16,7 @@
 
 import type { Database } from 'better-sqlite3';
 
-import { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_VERSION } from './schema.js';
+import { SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_VERSION } from './schema.js';
 
 /**
  * A single migration step. `version` is the schema version this migration
@@ -66,6 +66,13 @@ export const MIGRATIONS: readonly Migration[] = [
     description: 'emergency kit: add vault.emergency_code_hash column',
     up: (db) => {
       db.exec(SCHEMA_V3);
+    },
+  },
+  {
+    version: 4,
+    description: 'emergency kit: add vault.emergency_wrapped_key column (key escrow)',
+    up: (db) => {
+      db.exec(SCHEMA_V4);
     },
   },
 ];

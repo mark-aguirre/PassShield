@@ -184,7 +184,12 @@ function ensureTray(): void {
     image = image.resize({ width: 16, height: 16 });
   }
 
-  tray = image.isEmpty() ? new Tray(WINDOW_ICON_PATH) : new Tray(image);
+  // Always build the Tray from a nativeImage, never from a raw path. Passing a
+  // path that Electron can't load (e.g. a missing/unshipped icon in a packaged
+  // build) makes `new Tray(path)` throw "Failed to load image from path",
+  // which crashes the whole main process. An empty nativeImage is accepted by
+  // Tray and simply yields a blank glyph — degraded but non-fatal. (Req 14)
+  tray = new Tray(image);
   tray.setToolTip('PassShield');
 
   const contextMenu = Menu.buildFromTemplate([

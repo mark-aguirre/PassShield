@@ -21,7 +21,7 @@
  * This doubles as the `encryption_version` recorded on the `vault` row so the
  * on-disk encryption/format version travels with the vault. (Req 13.2)
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /**
  * DDL for schema version 1. Executed as a single script inside a transaction
@@ -133,4 +133,28 @@ CREATE INDEX IF NOT EXISTS idx_vault_item_parent
 export const SCHEMA_V3 = /* sql */ `
 ALTER TABLE vault
   ADD COLUMN emergency_code_hash TEXT;
+`;
+
+/**
+ * DDL for schema version 4: emergency recovery key escrow.
+ *
+ * Adds an `emergency_wrapped_key` column to the `vault` row. This column stores
+ * the vault key *wrapped* (AES-256-GCM sealed) under a key derived from the
+ * emergency recovery code — see `@PassShield/crypto`'s `wrapVaultKey`. It is
+ * written alongside `emergency_code_hash` when a kit is generated (while the
+ * vault is unlocked and the raw key is available) and read during recovery to
+ * unwrap the vault key without the master password, enabling password reset
+ * while the vault is locked.
+ *
+ * The stored blob is not a plaintext secret: it is ciphertext that can only be
+ * opened with the recovery code, which is never persisted. When NULL, no kit
+ * with escrow exists (either no kit was generated, or an older kit predates
+ * this migration and must be regenerated to enable locked recovery).
+ *
+ * A plain `ALTER TABLE … ADD COLUMN` with a NULL default is backward-compatible
+ * with existing SQLite rows (every existing vault row gets NULL automatically).
+ */
+export const SCHEMA_V4 = /* sql */ `
+ALTER TABLE vault
+  ADD COLUMN emergency_wrapped_key TEXT;
 `;

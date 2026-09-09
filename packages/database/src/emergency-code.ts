@@ -46,6 +46,30 @@ export function getEmergencyCodeHash(db: VaultDatabase): string | null {
 }
 
 /**
+ * Read the stored wrapped vault key from the single `vault` row.
+ *
+ * Returns the serialized {@link WrappedVaultKey} JSON string when a kit with
+ * escrow has been generated (schema v4+), or `null` when the column is NULL
+ * (no kit, or a pre-v4 kit that lacks escrow and cannot recover while locked).
+ *
+ * @param db An open vault database connection.
+ * @returns The stored wrapped-key JSON string, or `null`.
+ */
+export function getEmergencyWrappedKey(db: VaultDatabase): string | null {
+  const row = db
+    .prepare(
+      /* sql */ `
+      SELECT emergency_wrapped_key
+        FROM vault
+       WHERE id = @id
+    `,
+    )
+    .get({ id: VAULT_ROW_ID }) as { emergency_wrapped_key: string | null } | undefined;
+
+  return row?.emergency_wrapped_key ?? null;
+}
+
+/**
  * Persist (or clear) the emergency code hash on the single `vault` row.
  *
  * Pass a base64 hash string to record a newly generated kit, or `null` to
@@ -66,6 +90,32 @@ export function setEmergencyCodeHash(db: VaultDatabase, hash: string | null): vo
   ).run({
     id: VAULT_ROW_ID,
     hash,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * Persist (or clear) the wrapped vault key on the single `vault` row.
+ *
+ * Pass a serialized {@link WrappedVaultKey} JSON string to record the escrow
+ * for a newly generated kit, or `null` to clear it (e.g. after a successful
+ * recovery, since each kit is single-use). Written together with the code hash
+ * at kit generation and cleared together at recovery.
+ *
+ * @param db An open vault database connection.
+ * @param wrappedKey The serialized wrapped-key JSON, or `null` to clear.
+ */
+export function setEmergencyWrappedKey(db: VaultDatabase, wrappedKey: string | null): void {
+  db.prepare(
+    /* sql */ `
+    UPDATE vault
+       SET emergency_wrapped_key = @wrapped_key,
+           updated_at = @updated_at
+     WHERE id = @id
+  `,
+  ).run({
+    id: VAULT_ROW_ID,
+    wrapped_key: wrappedKey,
     updated_at: new Date().toISOString(),
   });
 }

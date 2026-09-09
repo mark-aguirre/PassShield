@@ -30,9 +30,12 @@ import {
   generateSalt,
   verify,
   verifyRecoveryCode,
+  wrapVaultKey,
+  unwrapVaultKey,
   type EncryptedPayload,
   type VaultKey,
   type VerifierRecord,
+  type WrappedVaultKey,
 } from '@PassShield/crypto';
 import {
   closeDatabase,
@@ -42,6 +45,7 @@ import {
   deleteCategory,
   deleteItem,
   getEmergencyCodeHash,
+  getEmergencyWrappedKey,
   getItemById,
   listAllItemRowsForReencryption,
   listCategoriesWithCounts,
@@ -51,6 +55,7 @@ import {
   restoreItem,
   searchItems,
   setEmergencyCodeHash,
+  setEmergencyWrappedKey,
   setItemEncryptedPayload,
   trashItem,
   updateCategory,
@@ -577,7 +582,17 @@ export class VaultService {
 
     try {
       const { plainCode, codeHash } = generateRecoveryCode();
-      setEmergencyCodeHash(this.state.db, codeHash);
+      // Wrap the live vault key under a key derived from the recovery code so
+      // the vault can be recovered while LOCKED (the code alone can unwrap the
+      // key without the master password). The hash authenticates the code; the
+      // wrapped key is what actually enables re-encryption during recovery.
+      const wrapped = wrapVaultKey(plainCode, this.state.key.key);
+      const db = this.state.db;
+      const writeKit = db.transaction(() => {
+        setEmergencyCodeHash(db, codeHash);
+        setEmergencyWrappedKey(db, JSON.stringify(wrapped));
+      });
+      writeKit();
       this.logger?.info('emergency kit generated');
       return ok({ plainCode });
     } catch {
@@ -597,12 +612,18 @@ export class VaultService {
    *      constant time. Reject on mismatch with a generic error.
    *   3. Validate the new password (non-empty, confirmation matches).
    *   4. Derive a new key + salt, build a new verifier.
-   *   5. In one SQLite transaction: re-encrypt every item payload under the
-   *      new key and rewrite the vault row's salt, verifier, and
-   *      `emergency_code_hash` (cleared — each kit is single-use).
-   *   6. Swap the in-memory key to the new one, notify the unlock hook.
+   *   5. Obtain the OLD vault key. When the vault is unlocked we already hold
+   *      it in `this.state`. When LOCKED we unwrap it from the stored
+   *      `emergency_wrapped_key` blob using the recovery code — no master
+   *      password required. This is what makes locked-vault recovery work.
+   *   6. In one SQLite transaction: re-encrypt every item payload under the
+   *      new key and rewrite the vault row's salt, verifier,
+   *      `emergency_code_hash`, and `emergency_wrapped_key` (both cleared —
+   *      each kit is single-use).
+   *   7. Swap the in-memory key to the new one and notify the unlock hook, so
+   *      the vault ends up unlocked under the new password.
    *
-   * On any failure before step 5 the live vault is untouched. If the
+   * On any failure before the transaction the live vault is untouched. If the
    * transaction rolls back the vault remains readable under the old state.
    */
   async resetPasswordWithEmergencyKit(input: ResetPasswordWithKitInput): Promise<Result> {
@@ -656,67 +677,84 @@ export class VaultService {
       return fail('io', 'Could not derive the new vault key.');
     }
 
-    // 5. Re-encrypt all items and rewrite the vault row atomically. The kit
-    // hash is cleared so the same code cannot be used a second time.
-    const ts = new Date().toISOString();
-
-    // When the vault is currently unlocked we hold the old key in state; use it
-    // to decrypt. When locked we must derive the old key first.
-    let oldKey: VaultKey | null = null;
+    // 5. Obtain the OLD vault key so existing items can be decrypted and
+    // re-encrypted under the new key. Two paths:
+    //   - Unlocked: reuse the live key already in state (and its DB handle).
+    //   - Locked: unwrap the key from the escrow blob using the recovery code.
+    //     This is the whole point of the emergency kit — a locked-out user has
+    //     no master password, but the code alone can unwrap the stored key.
     const wasUnlocked = this.state !== null;
+    let oldKey: VaultKey;
+    // The connection the re-encryption transaction will run on. For the
+    // unlocked path we reuse state.db (it owns any pending WAL); for the locked
+    // path the freshly-opened `db` is the only handle we have.
+    let activeDb: VaultDatabase;
+    // Whether we should close `db` after the transaction (locked path only —
+    // the unlocked path keeps using state.db and closes the temp `db` now).
+    let ownsActiveDb = false;
 
     if (wasUnlocked) {
       oldKey = this.state!.key;
+      closeDatabase(db);
+      activeDb = this.state!.db;
     } else {
-      // Locked path: derive the old key from the stored verifier so we can
-      // re-encrypt existing items.
+      // Locked path: read and unwrap the escrowed vault key with the code.
+      let wrappedRaw: string | null;
       try {
-        const verifierRow = this.readVerifier(db);
-        if (verifierRow === null) {
-          closeDatabase(db);
-          return fail('io', 'Could not read vault credentials.');
-        }
-        const salt = Buffer.from(verifierRow.salt, 'base64');
-        // We don't have the old password — but we don't need it to re-encrypt:
-        // we can read the raw ciphertext rows directly and decrypt them only if
-        // we have the old key. Since we don't have the old password in the
-        // locked path, we must perform the re-encryption while the vault was
-        // already open with a valid key.
-        //
-        // If the vault is locked and we lack the old key, we cannot decrypt
-        // existing items. The recovery flow therefore requires either:
-        //   a) the vault is unlocked (normal case — user forgot password after
-        //      a crash or time-out but still has a live session), or
-        //   b) we set a new password without re-encrypting, losing old items
-        //      (destructive reset — out of scope for V1).
-        //
-        // For V1 we surface a clear error directing the user to restore from a
-        // backup if they are fully locked out.
-        void salt; // referenced above for clarity
-        closeDatabase(db);
-        return fail(
-          'locked',
-          'Password reset requires the vault to be unlocked. If you are locked out, restore from a backup.',
-        );
+        wrappedRaw = getEmergencyWrappedKey(db);
       } catch {
         closeDatabase(db);
+        try { newKey.key.fill(0); } catch { /* ignore */ }
         return fail('io', 'Could not read vault credentials.');
       }
+
+      if (wrappedRaw === null) {
+        // A hash exists but no escrow — this kit predates key escrow (schema
+        // v4) and cannot recover a locked vault. Direct the user to a backup.
+        closeDatabase(db);
+        try { newKey.key.fill(0); } catch { /* ignore */ }
+        return fail(
+          'not_found',
+          'This vault\u2019s emergency kit does not support recovery while locked. Generate a new kit after unlocking, or restore from a backup.',
+        );
+      }
+
+      let recoveredKeyBytes: Buffer;
+      try {
+        const wrapped = JSON.parse(wrappedRaw) as WrappedVaultKey;
+        recoveredKeyBytes = unwrapVaultKey(input.recoveryCode, wrapped);
+      } catch {
+        // Wrong code (GCM tag mismatch) or a corrupt blob. The hash already
+        // matched, so this is unexpected, but fail closed regardless.
+        closeDatabase(db);
+        try { newKey.key.fill(0); } catch { /* ignore */ }
+        return fail('auth', 'The recovery code is incorrect.');
+      }
+
+      // Reconstruct a VaultKey using the vault's stored KDF params so the
+      // decrypt path treats it exactly like a normally-derived key.
+      const verifierRow = this.readVerifier(db);
+      if (verifierRow === null) {
+        recoveredKeyBytes.fill(0);
+        closeDatabase(db);
+        try { newKey.key.fill(0); } catch { /* ignore */ }
+        return fail('io', 'Could not read vault credentials.');
+      }
+      oldKey = { key: recoveredKeyBytes, params: verifierRow.params };
+      activeDb = db;
+      ownsActiveDb = true;
     }
 
-    // At this point oldKey is guaranteed non-null (vault was unlocked).
-    const activeOldKey = oldKey!;
-    // Use the existing open DB handle from state rather than the freshly-opened
-    // one so we stay inside the same connection that owns any pending WAL.
-    closeDatabase(db);
-    const activeDb = this.state!.db;
-
+    // 6. Re-encrypt all items and rewrite the vault row atomically. Both the
+    // kit hash and the wrapped key are cleared so the same code cannot be used
+    // a second time.
+    const ts = new Date().toISOString();
     try {
       const reencryptAll = activeDb.transaction(() => {
         const rows = listAllItemRowsForReencryption(activeDb);
         for (const row of rows) {
           const encrypted = JSON.parse(row.encrypted_payload) as EncryptedPayload;
-          const plaintext = decrypt(activeOldKey, encrypted);
+          const plaintext = decrypt(oldKey, encrypted);
           const reEncrypted = encrypt(newKey, plaintext);
           plaintext.fill(0);
           setItemEncryptedPayload(activeDb, row.id, JSON.stringify(reEncrypted));
@@ -728,6 +766,7 @@ export class VaultService {
                SET kdf_salt              = @kdf_salt,
                    verifier              = @verifier,
                    emergency_code_hash   = NULL,
+                   emergency_wrapped_key = NULL,
                    updated_at            = @updated_at
              WHERE id = @id
           `,
@@ -742,12 +781,17 @@ export class VaultService {
       reencryptAll();
     } catch {
       // Transaction rolled back — vault intact under old credentials.
+      try { oldKey.key.fill(0); } catch { /* ignore */ }
       try { newKey.key.fill(0); } catch { /* ignore */ }
+      if (ownsActiveDb) {
+        closeDatabase(activeDb);
+      }
       return fail('io', 'Could not reset the master password.');
     }
 
-    // 6. Swap the in-memory key and notify unlock hook.
-    try { activeOldKey.key.fill(0); } catch { /* ignore */ }
+    // 7. Swap the in-memory key and notify the unlock hook. The vault ends up
+    // unlocked under the new password regardless of whether it started locked.
+    try { oldKey.key.fill(0); } catch { /* ignore */ }
     this.state = { key: newKey, db: activeDb };
     this.logger?.info('master password reset via emergency kit');
     this.notifyUnlocked();

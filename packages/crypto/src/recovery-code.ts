@@ -25,7 +25,14 @@
  *   Verification strips dashes and normalizes case before comparing.
  */
 
-import { hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  hkdfSync,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from 'node:crypto';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -168,5 +175,150 @@ export function verifyRecoveryCode(candidateCode: string, storedHash: string): b
   } catch {
     // Any decoding or derivation error is treated as a non-match.
     return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Recovery-code key escrow (wrapped vault key)
+// ---------------------------------------------------------------------------
+//
+// The recovery-code hash above only *authenticates* a code — it cannot recover
+// the vault key, because a hash is one-way. To make locked-vault recovery
+// actually work, the emergency kit also stores the vault key *wrapped* under a
+// key derived from the recovery code. The recovery code is the only input, so
+// a locked-out user (who lacks the master password) can still unwrap the vault
+// key, decrypt existing items, and re-encrypt them under a new password.
+//
+// Design:
+//   - A wrapping key is derived from the normalized recovery code with scrypt
+//     over a per-kit random salt. scrypt (not raw HKDF) is used here because,
+//     unlike the authentication hash, this key protects the vault key at rest,
+//     so a slow KDF adds defense in depth even though the code has 128 bits of
+//     entropy.
+//   - The 32-byte vault key is sealed with AES-256-GCM (a fresh random IV per
+//     wrap) so any tampering with the stored blob is detected on unwrap.
+//   - The salt, IV, tag, and ciphertext are packed into one self-describing
+//     JSON blob (all base64) stored in the vault row's
+//     `emergency_wrapped_key` column. Nothing here reveals the master password.
+
+/** scrypt cost params for deriving the recovery-code wrapping key. */
+const WRAP_KDF = { N: 32768, r: 8, p: 1 } as const;
+
+/** Salt length (bytes) for the wrapping-key derivation. */
+const WRAP_SALT_BYTES = 16;
+
+/** AES-256 key length (bytes) for wrapping. */
+const WRAP_KEY_BYTES = 32;
+
+/** GCM nonce length (bytes). */
+const WRAP_IV_BYTES = 12;
+
+/** GCM authentication tag length (bytes). */
+const WRAP_AUTH_TAG_BYTES = 16;
+
+/** AEAD cipher used to seal the vault key under the recovery-code key. */
+const WRAP_ALGORITHM = 'aes-256-gcm';
+
+/** scrypt `maxmem` headroom so higher cost factors do not trip the default. */
+const WRAP_MAXMEM = Math.max(32 * 1024 * 1024, 128 * WRAP_KDF.N * WRAP_KDF.r * WRAP_KDF.p * 2);
+
+/**
+ * A wrapped (encrypted) copy of the vault key, sealed under a key derived from
+ * the recovery code. Persisted as JSON in `vault.emergency_wrapped_key`. All
+ * binary fields are base64. `v` is a format version for forward compatibility.
+ */
+export interface WrappedVaultKey {
+  /** Blob format version. */
+  readonly v: 1;
+  /** scrypt salt (base64) for deriving the wrapping key from the code. */
+  readonly salt: string;
+  /** GCM IV / nonce (base64). */
+  readonly iv: string;
+  /** GCM authentication tag (base64). */
+  readonly authTag: string;
+  /** Wrapped vault-key bytes (base64). */
+  readonly ciphertext: string;
+}
+
+/**
+ * Derive the 32-byte wrapping key from the (normalized) recovery code and a
+ * salt using scrypt. Deterministic for a given code + salt, so the same code
+ * later reproduces the key needed to unwrap.
+ */
+function deriveWrappingKey(recoveryCode: string, salt: Buffer): Buffer {
+  const normalized = Buffer.from(normalizeCode(recoveryCode), 'utf8');
+  return scryptSync(normalized, salt, WRAP_KEY_BYTES, {
+    N: WRAP_KDF.N,
+    r: WRAP_KDF.r,
+    p: WRAP_KDF.p,
+    maxmem: WRAP_MAXMEM,
+  });
+}
+
+/**
+ * Wrap (encrypt) the raw vault key under a key derived from the recovery code.
+ *
+ * Called at emergency-kit generation time, while the vault is unlocked and the
+ * raw key is available. The returned blob is safe to persist; it can only be
+ * unwrapped with the matching recovery code.
+ *
+ * @param recoveryCode - The raw recovery code (dashes/case are normalized).
+ * @param vaultKey - The 32-byte raw vault key to seal.
+ * @returns A {@link WrappedVaultKey} to store in `emergency_wrapped_key`.
+ * @throws If `vaultKey` is not 32 bytes.
+ */
+export function wrapVaultKey(recoveryCode: string, vaultKey: Buffer): WrappedVaultKey {
+  if (vaultKey.length !== WRAP_KEY_BYTES) {
+    throw new Error(`Invalid vault key length: expected ${WRAP_KEY_BYTES} bytes`);
+  }
+  const salt = randomBytes(WRAP_SALT_BYTES);
+  const wrappingKey = deriveWrappingKey(recoveryCode, salt);
+  const iv = randomBytes(WRAP_IV_BYTES);
+  const cipher = createCipheriv(WRAP_ALGORITHM, wrappingKey, iv, {
+    authTagLength: WRAP_AUTH_TAG_BYTES,
+  });
+  const ciphertext = Buffer.concat([cipher.update(vaultKey), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  wrappingKey.fill(0);
+  return {
+    v: 1,
+    salt: salt.toString('base64'),
+    iv: iv.toString('base64'),
+    authTag: authTag.toString('base64'),
+    ciphertext: ciphertext.toString('base64'),
+  };
+}
+
+/**
+ * Unwrap (decrypt) the vault key from a stored blob using the recovery code.
+ *
+ * Called during locked-vault recovery: the code is the only input, so a user
+ * who has forgotten their master password can still recover the raw key. GCM
+ * verification means a wrong code or a tampered blob throws rather than
+ * returning a bad key.
+ *
+ * @param recoveryCode - The raw recovery code entered by the user.
+ * @param wrapped - The stored {@link WrappedVaultKey}.
+ * @returns The raw 32-byte vault key.
+ * @throws If the code is wrong, the blob is tampered/corrupt, or unsupported.
+ */
+export function unwrapVaultKey(recoveryCode: string, wrapped: WrappedVaultKey): Buffer {
+  if (wrapped.v !== 1) {
+    throw new Error(`Unsupported wrapped-key version: ${String(wrapped.v)}`);
+  }
+  const salt = Buffer.from(wrapped.salt, 'base64');
+  const iv = Buffer.from(wrapped.iv, 'base64');
+  const authTag = Buffer.from(wrapped.authTag, 'base64');
+  const ciphertext = Buffer.from(wrapped.ciphertext, 'base64');
+  const wrappingKey = deriveWrappingKey(recoveryCode, salt);
+  const decipher = createDecipheriv(WRAP_ALGORITHM, wrappingKey, iv, {
+    authTagLength: WRAP_AUTH_TAG_BYTES,
+  });
+  decipher.setAuthTag(authTag);
+  try {
+    // `final()` throws when the tag does not verify (wrong code or tampering).
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+  } finally {
+    wrappingKey.fill(0);
   }
 }

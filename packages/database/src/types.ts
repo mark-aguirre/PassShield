@@ -29,6 +29,13 @@ export interface VaultRow {
    * Added by schema migration v3. (Forgot-password recovery)
    */
   emergency_code_hash: string | null;
+  /**
+   * The vault key wrapped (AES-256-GCM) under a key derived from the emergency
+   * recovery code, serialized as JSON (base64 fields), or null when no kit with
+   * escrow exists. Read during recovery to unwrap the key without the master
+   * password. Added by schema migration v4. (Forgot-password recovery)
+   */
+  emergency_wrapped_key: string | null;
 }
 
 /** A row of the `vault_item` table. */

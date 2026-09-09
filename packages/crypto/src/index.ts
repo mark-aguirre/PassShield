@@ -32,7 +32,10 @@ export {
   generateRecoveryCode,
   hashRecoveryCode,
   verifyRecoveryCode,
+  wrapVaultKey,
+  unwrapVaultKey,
   type RecoveryCodeResult,
+  type WrappedVaultKey,
 } from './recovery-code.js';
 
 /** Marker for the crypto package version surface. */
