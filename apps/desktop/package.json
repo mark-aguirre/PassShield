@@ -11,7 +11,7 @@
     "clean": "tsc --build --clean",
     "dev": "npm run build && electron .",
     "start": "electron .",
-    "kill:app": "powershell -NoProfile -Command \"Stop-Process -Name PassShield -Force -ErrorAction SilentlyContinue\"",
+    "kill:app": "powershell -NoProfile -Command \"Get-Process -Name PassShield -ErrorAction SilentlyContinue | Stop-Process -Force; exit 0\"",
     "predist:win": "npm run kill:app",
     "dist:win": "npm run build && electron-builder --win",
     "predist:win:dir": "npm run kill:app",
